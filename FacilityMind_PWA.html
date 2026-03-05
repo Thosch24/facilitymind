@@ -263,7 +263,7 @@ async function callAI(content,key,prov,isPhoto=false){
 }
 
 // ── APP STATE ──────────────────────────────────────────────────────────
-const state={page:'dashboard',bldDetail:null};
+const state={page:'dashboard',bldDetail:null,roomDetail:null,bldTab:'rooms'};
 
 function navigate(page,extra={}){
   Object.assign(state,{page,...extra});
@@ -459,96 +459,406 @@ function pageBuildings(){
   }
 }
 
+
 function pageBuildingDetail(bid){
   const b=DB.get('buildings',[]).find(x=>x.id===bid);
   if(!b)return pageDashboard();
+  if(state.roomDetail)return pageRoomDetail(bid,state.roomDetail);
 
-  let assets=DB.get('assets',[]);
   const plans=DB.get('plans',[]);
   const bAssets=()=>DB.get('assets',[]).filter(a=>a.bid===bid);
+  const bRooms=()=>DB.get('rooms',[]).filter(r=>r.bid===bid);
 
   const root=div({cls:'page'});
 
-  // Header
+  // Hero header
   const hero=div({style:{background:`linear-gradient(135deg,${CLR.p},${CLR.p2})`,padding:'14px 16px 18px'}});
-  const backBtn=btn('← Zurück','btn-sm',()=>{state.bldDetail=null;render();});
+  const backBtn=btn('← Zurück','btn-sm',()=>{state.bldDetail=null;state.bldTab=null;render();});
   backBtn.style.cssText='background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;display:inline-flex;align-items:center;font-family:inherit';
   hero.appendChild(backBtn);
   hero.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:'#fff',marginBottom:'2px'}},b.name));
   hero.appendChild(div({style:{fontSize:'11px',color:'rgba(255,255,255,.5)'}},b.address+' · '+b.city));
-  const tags=div({style:{display:'flex',gap:'6px',marginTop:'10px',flexWrap:'wrap'}});
-  [[b.year,'🏗️'],[b.area+'m²','📐'],[b.floors+' OG','🪜'],[bAssets().length+' Anlagen','🔧']].forEach(([v,ic])=>{
-    tags.appendChild(span({style:{background:'rgba(255,255,255,.12)',color:'rgba(255,255,255,.75)',fontSize:'10px',fontWeight:'700',padding:'3px 8px',borderRadius:'50px'}},ic+' '+v));
+  const htags=div({style:{display:'flex',gap:'6px',marginTop:'10px',flexWrap:'wrap'}});
+  [[b.year,'🏗️'],[( b.area||'?')+'m²','📐'],[(b.floors||'?')+' OG','🪜'],[bAssets().length+' Anlagen','🔧'],[bRooms().length+' Räume','🚪']].forEach(([v,ic])=>{
+    htags.appendChild(span({style:{background:'rgba(255,255,255,.12)',color:'rgba(255,255,255,.75)',fontSize:'10px',fontWeight:'700',padding:'3px 8px',borderRadius:'50px'}},ic+' '+v));
   });
-  hero.appendChild(tags);root.appendChild(hero);
+  hero.appendChild(htags);root.appendChild(hero);
 
-  // Inventory section
-  const invWrap=div({style:{padding:'14px 14px 0'}});
-  const invHdr=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}});
-  invHdr.appendChild(div({style:{fontSize:'16px',fontWeight:'800',color:CLR.t1}},'Inventar'));
-  invHdr.appendChild(btn('＋ Anlage','btn-pri btn-sm',()=>showAssetForm(null)));
-  invWrap.appendChild(invHdr);
+  // Tab bar
+  let activeTab=state.bldTab||'rooms';
+  const tabBar=div({style:{display:'flex',background:'#fff',borderBottom:'1px solid '+CLR.bd,padding:'0 14px'}});
+  const tabContent=div({style:{padding:'14px 14px 0'}});
+  root.appendChild(tabBar);root.appendChild(tabContent);
 
-  function renderList(){
-    const existing=invWrap.querySelector('.asset-list');
-    if(existing)existing.remove();
-    const al=div({cls:'asset-list',style:{display:'flex',flexDirection:'column',gap:'10px'}});
+  function setTab(t){activeTab=t;state.bldTab=t;buildTabBar();buildTabContent();}
+
+  function buildTabBar(){
+    tabBar.innerHTML='';
+    [['rooms','🚪 Räume'],['assets','🔧 Inventar']].forEach(([k,l])=>{
+      const tb=div({style:{padding:'12px 16px',fontSize:'12px',fontWeight:'700',cursor:'pointer',borderBottom:'3px solid '+(activeTab===k?CLR.p:'transparent'),color:activeTab===k?CLR.p:CLR.t2},onclick:()=>setTab(k)},l);
+      tabBar.appendChild(tb);
+    });
+  }
+
+  function buildTabContent(){
+    tabContent.innerHTML='';
+    if(activeTab==='rooms')buildRoomsTab();
+    else buildAssetsTab();
+  }
+
+  // ── RÄUME TAB ──────────────────────────────────────────────────────────
+  function buildRoomsTab(){
+    const hdr=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}});
+    hdr.appendChild(div({style:{fontSize:'15px',fontWeight:'800',color:CLR.t1}},'Räume'));
+    const btnsHdr=div({style:{display:'flex',gap:'6px'}});
+    btnsHdr.appendChild(btn('🔍 Scan','btn-sec btn-sm',()=>showRoomScan()));
+    btnsHdr.appendChild(btn('＋','btn-ghost btn-sm',()=>showRoomForm(null)));
+    hdr.appendChild(btnsHdr);tabContent.appendChild(hdr);
+
+    const rooms=bRooms();
+    if(!rooms.length){
+      const e=div({cls:'empty-state'});
+      e.appendChild(div({style:{fontSize:'40px',marginBottom:'10px'}},'🚪'));
+      e.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'Noch keine Räume'));
+      e.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'16px'}},'KI-Raum-Scan erkennt alles automatisch'));
+      e.appendChild(btn('🔍 Raum-Scan starten','btn-pri btn-sm',()=>showRoomScan()));
+      tabContent.appendChild(e);return;
+    }
+
+    const list=div({style:{display:'flex',flexDirection:'column',gap:'10px'}});
+    for(const r of rooms){
+      const ra=DB.get('assets',[]).filter(a=>a.rid===r.id);
+      const condCol={'gut':CLR.ok,'mittel':CLR.wrn,'schlecht':CLR.dan,'renovierungsbedürftig':CLR.crit};
+      const col=condCol[r.overall_condition]||CLR.bd;
+      const c=card({overflow:'hidden',cursor:'pointer'});
+      c.addEventListener('click',()=>{state.roomDetail=r.id;render();});
+      const top=div({style:{display:'flex',gap:'12px',padding:'12px 13px 10px',alignItems:'flex-start'}});
+      const thumb=div({style:{flexShrink:'0'}});
+      if(r.photos&&r.photos.length){
+        thumb.appendChild(img({src:r.photos[0],style:{width:'58px',height:'58px',objectFit:'cover',borderRadius:'10px',border:'1px solid '+CLR.bd}}));
+      }else{
+        thumb.appendChild(div({style:{width:'58px',height:'58px',borderRadius:'10px',background:CLR.p+'12',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px'}},'🚪'));
+      }
+      top.appendChild(thumb);
+      const info=div({style:{flex:'1',minWidth:'0'}});
+      info.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1}},r.name||'Raum'));
+      const meta=[];
+      if(r.area)meta.push('📐 '+r.area+'m²');
+      if(r.height_m)meta.push('↕ '+r.height_m+'m');
+      if(r.floor!=null)meta.push('🪜 '+r.floor+'.OG');
+      if(meta.length)info.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'2px'}},meta.join(' · ')));
+      const trow=div({style:{display:'flex',gap:'4px',marginTop:'6px',flexWrap:'wrap'}});
+      if(r.overall_condition)trow.appendChild(badge(col,r.overall_condition));
+      if(r.floor_type)trow.appendChild(badge(CLR.p2,r.floor_type));
+      if(r.windows)trow.appendChild(badge(CLR.acc,'🪟 '+r.windows));
+      if(r.lighting_type)trow.appendChild(badge(CLR.wrn,'💡 '+r.lighting_type));
+      if(ra.length)trow.appendChild(badge(CLR.ok,'🔧 '+ra.length));
+      info.appendChild(trow);top.appendChild(info);
+      top.appendChild(div({style:{fontSize:'20px',color:CLR.t3,alignSelf:'center'}},'›'));
+      c.appendChild(top);
+      if(r.scanNote){
+        c.appendChild(div({style:{background:CLR.sf,borderTop:'1px solid '+CLR.bd,padding:'6px 13px',fontSize:'10px',color:CLR.t2}},'💡 '+r.scanNote.slice(0,80)+(r.scanNote.length>80?'…':'')));
+      }
+      list.appendChild(c);
+    }
+    const addNew=div({style:{border:'2px dashed '+CLR.bd,borderRadius:'16px',padding:'16px',textAlign:'center',cursor:'pointer'},onclick:()=>showRoomScan()});
+    addNew.appendChild(div({style:{fontSize:'22px',marginBottom:'4px'}},'🔍'));
+    addNew.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t2}},'Neuen Raum scannen'));
+    list.appendChild(addNew);
+    tabContent.appendChild(list);
+  }
+
+  // ── RAUM SCAN ──────────────────────────────────────────────────────────
+  function showRoomScan(){
+    const apiKey=DB.get('apiKey','');
+    const provider=DB.get('provider','claude');
+    let photos=[];
+    let scanStep='capture';
+    let scanResult=null;
+
+    const ov=div({cls:'overlay'});
+    const box=div({cls:'modal',style:{maxHeight:'95dvh'}});
+    box.appendChild(div({cls:'modal-handle'}));
+    const mhdr=div({cls:'modal-hdr'});
+    mhdr.appendChild(h('strong',{style:{fontSize:'15px',color:CLR.t1}},'🔍 Raum-Scan'));
+    const xb=h('button',{style:{fontSize:'24px',color:CLR.t2,background:'none',border:'none',cursor:'pointer',padding:'0 4px'},onclick:closeScan},'×');
+    mhdr.appendChild(xb);box.appendChild(mhdr);
+    const mbody=div({cls:'modal-body'});
+    box.appendChild(mbody);ov.appendChild(box);document.body.appendChild(ov);
+
+    const fileInp=h('input',{type:'file',accept:'image/*',multiple:'true',style:{display:'none'}});
+    fileInp.setAttribute('capture','environment');
+    document.body.appendChild(fileInp);
+    fileInp.addEventListener('change',async e=>{
+      const files=[...e.target.files];
+      const b64s=await Promise.all(files.map(fileToB64));
+      photos=[...photos,...b64s].slice(0,10);
+      e.target.value='';renderStep();
+    });
+
+    function closeScan(){ov.remove();fileInp.remove();}
+
+    function renderStep(){
+      mbody.innerHTML='';
+      if(scanStep==='analyzing'){
+        const s=div({style:{textAlign:'center',padding:'40px 20px'}});
+        const spinner=div({style:{fontSize:'48px',display:'inline-block',animation:'spin 1s linear infinite',marginBottom:'16px'}});
+        spinner.textContent='⟳';s.appendChild(spinner);
+        s.appendChild(div({style:{fontSize:'14px',fontWeight:'700',color:CLR.t1,marginBottom:'6px'}},'KI analysiert '+photos.length+' Fotos…'));
+        s.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'Raumgrösse · Materialien · Anlagen · Zustand'));
+        mbody.appendChild(s);return;
+      }
+      if(scanStep==='result'&&scanResult){renderResult();return;}
+
+      // ── CAPTURE STEP ──
+      if(!apiKey){
+        const w=div({style:{padding:'10px 14px',background:CLR.wrn+'22',borderRadius:'10px',marginBottom:'12px',fontSize:'11px',fontWeight:'700',color:CLR.wrn}});
+        w.textContent='⚠️ Kein API-Key – bitte in Einstellungen eintragen';mbody.appendChild(w);
+      }
+      mbody.appendChild(div({style:{fontSize:'12px',color:CLR.t2,marginBottom:'12px'}},'Fotografiere den Raum aus mehreren Winkeln. Mehr Fotos = bessere KI-Analyse.'));
+
+      // Photo grid
+      const grid=div({style:{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}});
+      photos.forEach((p,i)=>{
+        const tw=div({style:{position:'relative',width:'76px',height:'76px',flexShrink:'0'}});
+        tw.appendChild(img({src:p,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'10px'}}));
+        const del=div({style:{position:'absolute',top:'-6px',right:'-6px',width:'20px',height:'20px',borderRadius:'50%',background:CLR.dan,color:'#fff',fontSize:'11px',fontWeight:'800',border:'2px solid #fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'},onclick:()=>{photos.splice(i,1);renderStep();}});
+        del.textContent='×';tw.appendChild(del);grid.appendChild(tw);
+      });
+      if(photos.length<10){
+        const addPh=div({style:{width:'76px',height:'76px',borderRadius:'10px',border:'2px dashed '+CLR.bd,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'4px',background:CLR.sf,flexShrink:'0'},onclick:()=>fileInp.click()});
+        addPh.appendChild(span({style:{fontSize:'28px'}},'📷'));
+        addPh.appendChild(span({style:{fontSize:'9px',color:CLR.t2,fontWeight:'700'}},'Foto'));
+        grid.appendChild(addPh);
+      }
+      mbody.appendChild(grid);
+
+      // Guide for first use
+      if(photos.length===0){
+        const guide=div({style:{background:CLR.sf,borderRadius:'12px',padding:'12px 14px',marginBottom:'12px'}});
+        guide.appendChild(div({style:{fontSize:'11px',fontWeight:'800',color:CLR.t1,marginBottom:'8px'}},'📐 Empfohlener Rundgang:'));
+        [['1.','Gesamtansicht Raum vom Eingang'],['2.','Decke mit Beleuchtung'],['3.','Boden & Wände'],['4.','Fenster (Anzahl & Zustand)'],['5.','Technische Anlagen, Heizkörper']].forEach(([n,t])=>{
+          const row=div({style:{display:'flex',gap:'8px',fontSize:'11px',color:CLR.t2,marginBottom:'4px'}});
+          row.appendChild(span({style:{fontWeight:'800',color:CLR.p,width:'16px',flexShrink:'0'}},n));
+          row.appendChild(span({},t));
+          guide.appendChild(row);
+        });
+        mbody.appendChild(guide);
+      }
+
+      mbody.appendChild(div({style:{fontSize:'10px',color:CLR.t3,textAlign:'center',marginBottom:'14px'}},photos.length+'/10 Fotos · '+(apiKey?'Bereit':'API-Key fehlt')));
+
+      const btns=div({style:{display:'flex',gap:'8px'}});
+      btns.appendChild(btn('Abbrechen','btn-ghost',closeScan));
+      if(photos.length>0){
+        btns.appendChild(btn('🧠 KI-Analyse ('+photos.length+' Fotos)','btn-pri',()=>runScan()));
+      }else{
+        btns.appendChild(btn('📷 Foto aufnehmen','btn-pri',()=>fileInp.click()));
+      }
+      mbody.appendChild(btns);
+    }
+
+    async function runScan(){
+      if(!apiKey){alert('Bitte zuerst API-Key in Einstellungen eintragen');return;}
+      scanStep='analyzing';renderStep();
+      try{
+        const prompt=`Du bist Facility Manager und Baugutachter. Analysiere diese ${photos.length} Raum-Fotos sehr detailliert.
+Antworte NUR mit validem JSON (kein Markdown, keine Erklärung):
+{"name":"Raumname","type":"OFFICE|TECHNICAL|CORRIDOR|STORAGE|WC|MEETING|OTHER","area_m2":Zahl_oder_null,"length_m":Zahl_oder_null,"width_m":Zahl_oder_null,"height_m":Zahl_oder_null,"floor":Zahl_oder_null,"windows":{"count":Zahl,"size":"klein|mittel|gross","condition":"gut|mittel|schlecht","type":"Einfach|Doppel|Dreifach|unbekannt"},"floor_type":"Parkett|Laminat|Teppich|Fliesen|Beton|Linoleum|unbekannt","floor_condition":"gut|mittel|schlecht","ceiling_type":"Putz|Akustikdecke|Betondecke|Abdecke|unbekannt","ceiling_condition":"gut|mittel|schlecht","lighting":{"type":"LED|Leuchtstoffröhre|Halogen|gemischt|unbekannt","count":Zahl_oder_null,"condition":"gut|mittel|schlecht"},"technical_assets":[{"type":"HVAC_HEATING|PUMP|HVAC_VENT|ELEC_DIST|FIRE_PROT|VALVE|SENSOR|OTHER","name":"string","details":"string"}],"wall_condition":"gut|mittel|schlecht","overall_condition":"gut|mittel|schlecht|renovierungsbedürftig","notes":"Mängel und Beobachtungen","confidence":0-100}`;
+
+        let msgContent;
+        if(provider==='openai'){
+          msgContent=photos.map(p=>({type:'image_url',image_url:{url:p,detail:'high'}}));
+          msgContent.push({type:'text',text:prompt});
+          const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+apiKey},body:JSON.stringify({model:'gpt-4o',max_tokens:2000,messages:[{role:'user',content:msgContent}]})});
+          if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status);}
+          scanResult=JSON.parse((await r.json()).choices[0].message.content.replace(/```json?|```/g,'').trim());
+        }else{
+          msgContent=photos.map(p=>({type:'image',source:{type:'base64',media_type:'image/jpeg',data:p.replace(/^data:image\/\w+;base64,/,'')}}));
+          msgContent.push({type:'text',text:prompt});
+          const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:msgContent}]})});
+          if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status);}
+          scanResult=JSON.parse((await r.json()).content[0].text.replace(/```json?|```/g,'').trim());
+        }
+        scanStep='result';renderStep();
+      }catch(e){alert('Fehler: '+e.message);scanStep='capture';renderStep();}
+    }
+
+    function renderResult(){
+      const res=scanResult;
+      const condCol={'gut':CLR.ok,'mittel':CLR.wrn,'schlecht':CLR.dan,'renovierungsbedürftig':CLR.crit};
+      const condC=condCol[res.overall_condition]||CLR.t2;
+
+      // Summary
+      const sc=card({padding:'14px',marginBottom:'12px'});
+      const sh=div({style:{display:'flex',gap:'12px',alignItems:'flex-start',marginBottom:'12px'}});
+      if(photos[0])sh.appendChild(img({src:photos[0],style:{width:'60px',height:'60px',objectFit:'cover',borderRadius:'10px',flexShrink:'0'}}));
+      const si=div({flex:'1'});
+      si.appendChild(div({style:{fontSize:'16px',fontWeight:'800',color:CLR.t1}},res.name||'Raum'));
+      si.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginTop:'2px'}},(res.type||'')+' · '+res.confidence+'% Konfidenz'));
+      sh.appendChild(si);sc.appendChild(sh);
+      const dg=div({cls:'g4',style:{marginBottom:'10px'}});
+      [[res.area_m2?res.area_m2+'m²':'?','Fläche'],[res.height_m?res.height_m+'m':'?','Höhe'],[res.windows?.count??'?','Fenster'],[res.lighting?.count??'?','Leuchten']].forEach(([v,l])=>{
+        const dc=div({style:{background:CLR.sf,borderRadius:'9px',padding:'8px',textAlign:'center'}});
+        dc.appendChild(div({style:{fontSize:'16px',fontWeight:'800',color:CLR.p}},v));
+        dc.appendChild(div({style:{fontSize:'8px',color:CLR.t2,fontWeight:'700',textTransform:'uppercase',marginTop:'1px'}},l));
+        dg.appendChild(dc);
+      });
+      sc.appendChild(dg);
+      const ob=div({style:{display:'flex',alignItems:'center',gap:'8px',padding:'8px 10px',background:condC+'18',borderRadius:'8px'}});
+      ob.appendChild(div({style:{width:'8px',height:'8px',borderRadius:'50%',background:condC,flexShrink:'0'}}));
+      ob.appendChild(div({style:{fontSize:'11px',fontWeight:'700',color:condC}},'Gesamtzustand: '+(res.overall_condition||'unbekannt')));
+      sc.appendChild(ob);mbody.appendChild(sc);
+
+      // Details
+      const det=card({padding:'14px',marginBottom:'12px'});
+      det.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'📋 Raum-Details'));
+      const drows=[
+        res.length_m&&res.width_m?['📐 Maße',res.length_m+'m × '+res.width_m+'m']:null,
+        ['🪵 Boden',(res.floor_type||'?')+(res.floor_condition?' · '+res.floor_condition:'')],
+        ['🏔 Decke',(res.ceiling_type||'?')+(res.ceiling_condition?' · '+res.ceiling_condition:'')],
+        ['💡 Beleuchtung',(res.lighting?.type||'?')+(res.lighting?.count?' · '+res.lighting.count+' Stk.':'')+(res.lighting?.condition?' · '+res.lighting.condition:'')],
+        ['🪟 Fenster',(res.windows?.count??'?')+' Stk. · '+(res.windows?.type||'?')+(res.windows?.condition?' · '+res.windows.condition:'')],
+        ['🧱 Wände','Zustand: '+(res.wall_condition||'?')],
+      ].filter(Boolean);
+      drows.forEach(([k,v])=>{
+        const row=div({style:{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid '+CLR.bd,fontSize:'11px'}});
+        row.appendChild(span({style:{color:CLR.t2,fontWeight:'600'}},k));
+        row.appendChild(span({style:{color:CLR.t1,fontWeight:'700',textAlign:'right',maxWidth:'55%'}},v));
+        det.appendChild(row);
+      });
+      mbody.appendChild(det);
+
+      // Technical assets
+      if(res.technical_assets&&res.technical_assets.length){
+        const ta=card({padding:'14px',marginBottom:'12px'});
+        ta.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'🔧 Erkannte Anlagen ('+res.technical_assets.length+') – werden automatisch erfasst'));
+        res.technical_assets.forEach(a=>{
+          const ar=div({style:{display:'flex',gap:'10px',alignItems:'center',padding:'7px 0',borderBottom:'1px solid '+CLR.bd}});
+          ar.appendChild(div({style:{width:'30px',height:'30px',borderRadius:'8px',background:CLR.p+'15',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'15px',flexShrink:'0'}},EM[a.type]||'🏭'));
+          const ai=div({style:{flex:'1'}});
+          ai.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1}},a.name));
+          if(a.details)ai.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},a.details));
+          ar.appendChild(ai);ta.appendChild(ar);
+        });
+        mbody.appendChild(ta);
+      }
+
+      if(res.notes){
+        const nc=div({style:{padding:'10px 12px',background:CLR.wrn+'15',borderRadius:'10px',fontSize:'11px',color:CLR.t2,marginBottom:'12px'}});
+        nc.textContent='💡 '+res.notes;mbody.appendChild(nc);
+      }
+
+      const btns=div({style:{display:'flex',gap:'8px',paddingBottom:'8px'}});
+      btns.appendChild(btn('← Neu scannen','btn-ghost',()=>{scanStep='capture';scanResult=null;renderStep();}));
+      btns.appendChild(btn('✓ Raum speichern','btn-pri',()=>{
+        const newRoom={
+          id:uid(),bid:bid,
+          name:res.name||'Neuer Raum',type:res.type,
+          area:res.area_m2,length_m:res.length_m,width_m:res.width_m,height_m:res.height_m,
+          floor:res.floor,
+          windows:res.windows?.count,window_type:res.windows?.type,window_condition:res.windows?.condition,
+          floor_type:res.floor_type,floor_condition:res.floor_condition,
+          ceiling_type:res.ceiling_type,ceiling_condition:res.ceiling_condition,
+          lighting_type:res.lighting?.type,lighting_count:res.lighting?.count,lighting_condition:res.lighting?.condition,
+          wall_condition:res.wall_condition,overall_condition:res.overall_condition,
+          photos:[...photos],scanNote:res.notes,scannedAt:new Date().toISOString()
+        };
+        const rooms=DB.get('rooms',[]);rooms.push(newRoom);DB.set('rooms',rooms);
+        if(res.technical_assets?.length){
+          const assets=DB.get('assets',[]);
+          res.technical_assets.forEach(a=>assets.push({id:uid(),rid:newRoom.id,bid:bid,type:a.type,name:a.name,mfr:'',model:a.details||'',serial:'',year:null,kw:null,photos:[]}));
+          DB.set('assets',assets);
+        }
+        closeScan();buildTabContent();
+      }));
+      mbody.appendChild(btns);
+    }
+    renderStep();
+  }
+
+  // ── RAUM MANUELL ───────────────────────────────────────────────────────
+  function showRoomForm(existing){
+    let r=existing?{...existing}:{id:uid(),bid:bid,name:'',type:'OFFICE',area:'',floor:''};
+    modal(existing?r.name:'Neuer Raum',(body,close)=>{
+      const {wrap:nw}=field('Raumname',r.name,v=>r.name=v,{ph:'Büro 1.OG'});
+      const {wrap:tw}=field('Typ',r.type,v=>r.type=v,{options:[['OFFICE','🏢 Büro'],['TECHNICAL','⚙️ Technikraum'],['CORRIDOR','🚶 Flur'],['STORAGE','📦 Lager'],['WC','🚻 WC'],['MEETING','👥 Besprechung'],['OTHER','📋 Sonstiges']]});
+      const g=div({cls:'g2'});
+      const {wrap:aw}=field('Fläche m²',r.area,v=>r.area=v,{type:'number',mb:false});
+      const {wrap:fw}=field('Stockwerk',r.floor,v=>r.floor=v,{type:'number',mb:false});
+      g.appendChild(aw);g.appendChild(fw);
+      const btns=div({style:{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'14px'}});
+      btns.appendChild(btn('Abbrechen','btn-ghost',close));
+      btns.appendChild(btn('Speichern','btn-pri btn-sm',()=>{
+        if(!r.name.trim())return;
+        r.area=r.area?+r.area:null;r.floor=r.floor?+r.floor:null;
+        const rooms=DB.get('rooms',[]);
+        const idx=rooms.findIndex(x=>x.id===r.id);
+        if(idx>=0)rooms[idx]=r;else rooms.push(r);
+        DB.set('rooms',rooms);close();buildTabContent();
+      }));
+      [nw,tw,g,btns].forEach(el=>body.appendChild(el));
+    });
+  }
+
+  // ── INVENTAR TAB ───────────────────────────────────────────────────────
+  function buildAssetsTab(){
+    const hdr=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}});
+    hdr.appendChild(div({style:{fontSize:'15px',fontWeight:'800',color:CLR.t1}},'Inventar'));
+    hdr.appendChild(btn('＋ Anlage','btn-pri btn-sm',()=>showAssetForm(null)));
+    tabContent.appendChild(hdr);
     const ba=bAssets();
     if(!ba.length){
-      const empty=div({cls:'empty-state',style:{margin:'0'}});
-      empty.appendChild(div({style:{fontSize:'40px',marginBottom:'10px'}},'🏭'));
-      empty.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'Noch keine Anlagen'));
-      empty.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'14px'}},'Manuell hinzufügen oder KI-Scan nutzen'));
-      empty.appendChild(btn('＋ Erste Anlage','btn-pri btn-sm',()=>showAssetForm(null)));
-      al.appendChild(empty);
-    }else{
-      for(const a of ba){
-        const ap=plans.filter(p=>p.aid===a.id);
-        const stKey=ap.length?ap.reduce((w,p)=>{const s=getSt(p);const o=['ok','soon','urgent','overdue','critical'];return o.indexOf(s)>o.indexOf(w)?s:w},'ok'):'ok';
-        const col=SC[stKey];
-        const c=card({overflow:'hidden'});
-        const top=div({style:{display:'flex',gap:'10px',padding:'12px 12px 10px',cursor:'pointer'},onclick:()=>showAssetForm(a)});
-        const thumbWrap=div({style:{flexShrink:'0',width:'60px'}});
-        if(a.photos?.length){
-          thumbWrap.appendChild(img({src:a.photos[0],style:{width:'58px',height:'58px',objectFit:'cover',borderRadius:'10px',border:'1px solid '+CLR.bd}}));
-          if(a.photos.length>1)thumbWrap.appendChild(div({style:{fontSize:'9px',color:CLR.t2,textAlign:'center',fontWeight:'700',marginTop:'2px'}},'+'+String(a.photos.length-1)+' Fotos'));
-        }else{
-          thumbWrap.appendChild(div({style:{width:'58px',height:'58px',borderRadius:'10px',background:col+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px'}},EM[a.type]||'🏭'));
-        }
-        top.appendChild(thumbWrap);
-        const info=div({style:{flex:'1',minWidth:'0'}});
-        info.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},a.name));
-        info.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'2px'}},(a.mfr||'')+(a.model?' · '+a.model:'')));
-        if(a.serial)info.appendChild(div({style:{fontSize:'10px',color:CLR.t3,fontFamily:'monospace'}},'SN: '+a.serial));
-        const tagRow=div({style:{display:'flex',gap:'5px',marginTop:'5px',flexWrap:'wrap',alignItems:'center'}});
-        tagRow.appendChild(badge(col,ap.length+' Wartungen'));
-        if(a.year)tagRow.appendChild(span({style:{fontSize:'9px',color:CLR.t3,fontWeight:'600'}},'Bj. '+a.year));
-        info.appendChild(tagRow);
-        top.appendChild(info);
-        const del=btn('🗑️','',e=>{e.stopPropagation();if(!confirm('Anlage löschen?'))return;const u=DB.get('assets',[]).filter(x=>x.id!==a.id);DB.set('assets',u);renderList();});
-        del.style.cssText='background:none;border:none;cursor:pointer;font-size:14px;color:'+CLR.t3+';padding:4px;align-self:flex-start;flex-shrink:0';
-        top.appendChild(del);
-        c.appendChild(top);al.appendChild(c);
-      }
+      const e=div({cls:'empty-state'});
+      e.appendChild(div({style:{fontSize:'40px',marginBottom:'10px'}},'🏭'));
+      e.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'Noch keine Anlagen'));
+      e.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'14px'}},'Manuell hinzufügen oder Raum-Scan nutzen'));
+      e.appendChild(btn('＋ Anlage hinzufügen','btn-pri btn-sm',()=>showAssetForm(null)));
+      tabContent.appendChild(e);return;
     }
-    invWrap.appendChild(al);
+    const list=div({style:{display:'flex',flexDirection:'column',gap:'10px'}});
+    for(const a of ba){
+      const ap=plans.filter(p=>p.aid===a.id);
+      const stKey=ap.length?ap.reduce((w,p)=>{const s=getSt(p);const o=['ok','soon','urgent','overdue','critical'];return o.indexOf(s)>o.indexOf(w)?s:w},'ok'):'ok';
+      const col=SC[stKey];
+      const c=card({overflow:'hidden'});
+      const top=div({style:{display:'flex',gap:'10px',padding:'12px 12px 10px',cursor:'pointer'},onclick:()=>showAssetForm(a)});
+      const tw=div({style:{flexShrink:'0',width:'60px'}});
+      if(a.photos?.length){
+        tw.appendChild(img({src:a.photos[0],style:{width:'58px',height:'58px',objectFit:'cover',borderRadius:'10px',border:'1px solid '+CLR.bd}}));
+        if(a.photos.length>1)tw.appendChild(div({style:{fontSize:'9px',color:CLR.t2,textAlign:'center',fontWeight:'700',marginTop:'2px'}},'+'+String(a.photos.length-1)+' Fotos'));
+      }else{
+        tw.appendChild(div({style:{width:'58px',height:'58px',borderRadius:'10px',background:col+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px'}},EM[a.type]||'🏭'));
+      }
+      top.appendChild(tw);
+      const info=div({style:{flex:'1',minWidth:'0'}});
+      info.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},a.name));
+      info.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'2px'}},(a.mfr||'')+(a.model?' · '+a.model:'')));
+      if(a.serial)info.appendChild(div({style:{fontSize:'10px',color:CLR.t3,fontFamily:'monospace'}},'SN: '+a.serial));
+      const tr=div({style:{display:'flex',gap:'5px',marginTop:'5px',flexWrap:'wrap',alignItems:'center'}});
+      tr.appendChild(badge(col,ap.length+' Wartungen'));
+      if(a.year)tr.appendChild(span({style:{fontSize:'9px',color:CLR.t3,fontWeight:'600'}},'Bj. '+a.year));
+      info.appendChild(tr);top.appendChild(info);
+      const del=btn('🗑️','',e=>{e.stopPropagation();if(!confirm('Anlage löschen?'))return;DB.set('assets',DB.get('assets',[]).filter(x=>x.id!==a.id));buildTabContent();});
+      del.style.cssText='background:none;border:none;cursor:pointer;font-size:14px;color:'+CLR.t3+';padding:4px;align-self:flex-start;flex-shrink:0';
+      top.appendChild(del);c.appendChild(top);list.appendChild(c);
+    }
+    tabContent.appendChild(list);
   }
-  renderList();
-  root.appendChild(invWrap);
 
   function showAssetForm(existing){
-    let a=existing?{...existing}:{id:uid(),bid:bid,rid:'',type:'OTHER',name:'',mfr:'',model:'',serial:'',year:'',kw:'',photos:[]};
+    const rooms=bRooms();
+    let a=existing?{...existing}:{id:uid(),bid:bid,rid:rooms[0]?.id||'',type:'OTHER',name:'',mfr:'',model:'',serial:'',year:'',kw:'',photos:[]};
     let photos=[...(a.photos||[])];
     modal(existing?a.name:'Neue Anlage',(body,close)=>{
-      // Photos
       const phSec=div({style:{marginBottom:'16px'}});
-      phSec.appendChild(h('label',{cls:'fl'},'📷 Fotos ('+photos.length+'/8)'));
+      phSec.appendChild(h('label',{cls:'fl'},'📷 Fotos'));
       const phWrap=div({});phSec.appendChild(phWrap);
       photoPicker(phWrap,photos,v=>{photos=[...v];},8);
       body.appendChild(phSec);
-      // Fields
+      if(rooms.length){const {wrap:rw}=field('Raum',a.rid,v=>a.rid=v,{options:rooms.map(r=>[r.id,r.name||'Raum'])});body.appendChild(rw);}
       const g1=div({cls:'g2',style:{marginBottom:'13px'}});
-      const {wrap:nw}=field('Name',a.name,v=>a.name=v,{ph:'Heizkessel Vitodens',mb:false});
+      const {wrap:nw}=field('Name',a.name,v=>a.name=v,{ph:'Heizkessel',mb:false});
       const {wrap:tw}=field('Typ',a.type,v=>a.type=v,{options:Object.entries(TL).map(([v,l])=>[v,EM[v]+' '+l]),mb:false});
       g1.appendChild(nw);g1.appendChild(tw);body.appendChild(g1);
       const g2=div({cls:'g2',style:{marginBottom:'13px'}});
@@ -568,14 +878,114 @@ function pageBuildingDetail(bid){
         const cur=DB.get('assets',[]);
         const idx=cur.findIndex(x=>x.id===a.id);
         if(idx>=0)cur[idx]=a;else cur.push(a);
-        DB.set('assets',cur);close();renderList();
+        DB.set('assets',cur);close();buildTabContent();
       }));
       body.appendChild(btns);
     });
   }
 
+  buildTabBar();buildTabContent();
   return root;
 }
+
+// ── RAUM DETAIL ────────────────────────────────────────────────────────
+function pageRoomDetail(bid,rid){
+  const r=DB.get('rooms',[]).find(x=>x.id===rid);
+  if(!r){state.roomDetail=null;return pageBuildingDetail(bid);}
+  const plans=DB.get('plans',[]);
+  const rAssets=DB.get('assets',[]).filter(a=>a.rid===rid);
+  const condCol={'gut':CLR.ok,'mittel':CLR.wrn,'schlecht':CLR.dan,'renovierungsbedürftig':CLR.crit};
+
+  const root=div({cls:'page'});
+  const hero=div({style:{background:`linear-gradient(135deg,${CLR.p},${CLR.p2})`,padding:'14px 16px 18px'}});
+  const back=btn('← Zurück','btn-sm',()=>{state.roomDetail=null;state.bldTab='rooms';render();});
+  back.style.cssText='background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;display:inline-flex;align-items:center;font-family:inherit';
+  hero.appendChild(back);
+  hero.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:'#fff',marginBottom:'2px'}},r.name||'Raum'));
+  const meta=[];
+  if(r.area)meta.push('📐 '+r.area+'m²');
+  if(r.height_m)meta.push('↕ '+r.height_m+'m');
+  if(r.floor!=null)meta.push('🪜 '+r.floor+'.OG');
+  hero.appendChild(div({style:{fontSize:'11px',color:'rgba(255,255,255,.5)'}},meta.join(' · ')||'Keine Maße'));
+  if(r.overall_condition){
+    const cc=condCol[r.overall_condition]||CLR.t2;
+    const cb=div({style:{marginTop:'10px'}});cb.appendChild(badge(cc,'Zustand: '+r.overall_condition));hero.appendChild(cb);
+  }
+  root.appendChild(hero);
+
+  const wrap=div({style:{padding:'14px'}});
+
+  // Photos
+  if(r.photos&&r.photos.length){
+    const ps=card({padding:'12px',marginBottom:'12px'});
+    ps.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'8px'}},'📷 Raum-Fotos ('+r.photos.length+')'));
+    const pg=div({style:{display:'flex',gap:'8px',flexWrap:'wrap'}});
+    r.photos.forEach(p=>pg.appendChild(img({src:p,style:{width:'72px',height:'72px',objectFit:'cover',borderRadius:'8px'}})));
+    ps.appendChild(pg);wrap.appendChild(ps);
+  }
+
+  // Details
+  const dc=card({padding:'14px',marginBottom:'12px'});
+  dc.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'📋 Raum-Details'));
+  const drows=[
+    r.length_m&&r.width_m?['📐 Maße',r.length_m+'m × '+r.width_m+'m']:null,
+    r.floor_type?['🪵 Boden',r.floor_type+(r.floor_condition?' · '+r.floor_condition:'')]:null,
+    r.ceiling_type?['🏔 Decke',r.ceiling_type+(r.ceiling_condition?' · '+r.ceiling_condition:'')]:null,
+    r.lighting_type?['💡 Beleuchtung',r.lighting_type+(r.lighting_count?' · '+r.lighting_count+' Stk.':'')+(r.lighting_condition?' · '+r.lighting_condition:'')]:null,
+    r.windows?['🪟 Fenster',r.windows+' Stk.'+(r.window_type?' · '+r.window_type:'')+(r.window_condition?' · '+r.window_condition:'')]:null,
+    r.wall_condition?['🧱 Wände','Zustand: '+r.wall_condition]:null,
+  ].filter(Boolean);
+  if(drows.length){
+    drows.forEach(([k,v])=>{
+      const row=div({style:{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid '+CLR.bd,fontSize:'11px'}});
+      row.appendChild(span({style:{color:CLR.t2,fontWeight:'600'}},k));
+      row.appendChild(span({style:{color:CLR.t1,fontWeight:'700',textAlign:'right',maxWidth:'60%'}},v));
+      dc.appendChild(row);
+    });
+  }else{
+    dc.appendChild(div({style:{fontSize:'11px',color:CLR.t2,textAlign:'center',padding:'10px'}},'Kein KI-Scan vorhanden – manuell gescannt'));
+  }
+  wrap.appendChild(dc);
+
+  // Assets
+  const ac=card({padding:'14px',marginBottom:'12px'});
+  ac.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'🔧 Anlagen in diesem Raum ('+rAssets.length+')'));
+  if(rAssets.length){
+    rAssets.forEach(a=>{
+      const ap=plans.filter(p=>p.aid===a.id);
+      const stKey=ap.length?ap.reduce((w,p)=>{const s=getSt(p);const o=['ok','soon','urgent','overdue','critical'];return o.indexOf(s)>o.indexOf(w)?s:w},'ok'):'ok';
+      const col=SC[stKey];
+      const ar=div({style:{display:'flex',gap:'10px',alignItems:'center',padding:'8px 0',borderBottom:'1px solid '+CLR.bd}});
+      ar.appendChild(div({style:{width:'34px',height:'34px',borderRadius:'9px',background:col+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px',flexShrink:'0'}},EM[a.type]||'🏭'));
+      const ai=div({style:{flex:'1'}});
+      ai.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1}},a.name));
+      ai.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},(a.mfr||'')+(a.model?' · '+a.model:'')));
+      ar.appendChild(ai);ar.appendChild(badge(col,ap.length+' Pläne'));
+      ac.appendChild(ar);
+    });
+  }else{
+    ac.appendChild(div({style:{fontSize:'11px',color:CLR.t2,textAlign:'center',padding:'8px'}},'Keine Anlagen in diesem Raum'));
+  }
+  wrap.appendChild(ac);
+
+  if(r.scanNote){
+    wrap.appendChild(div({style:{padding:'10px 12px',background:CLR.wrn+'15',borderRadius:'10px',fontSize:'11px',color:CLR.t2,marginBottom:'12px'}},'💡 '+r.scanNote));
+  }
+  if(r.scannedAt){
+    wrap.appendChild(div({style:{fontSize:'10px',color:CLR.t3,textAlign:'center',marginBottom:'12px'}},'KI-Scan: '+new Date(r.scannedAt).toLocaleDateString('de-DE')));
+  }
+
+  const delBtn=btn('🗑️ Raum löschen','btn-sec',()=>{
+    if(!confirm('Raum löschen?'))return;
+    DB.set('rooms',DB.get('rooms',[]).filter(x=>x.id!==rid));
+    state.roomDetail=null;state.bldTab='rooms';render();
+  });
+  delBtn.style.cssText+='width:100%;justify-content:center;border-radius:12px;padding:12px;';
+  wrap.appendChild(delBtn);
+  root.appendChild(wrap);
+  return root;
+}
+
 
 // ── MAINTENANCE ────────────────────────────────────────────────────────
 function pageMaintenance(){
