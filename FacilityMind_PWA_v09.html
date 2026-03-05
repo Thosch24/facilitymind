@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0F2942">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FacilityMind">
+<title>FacilityMind AI</title>
+
+<!-- PWA Icons inline as SVG data URIs -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%230F2942'/%3E%3Ctext x='96' y='130' font-size='110' text-anchor='middle'%3E🏭%3C/text%3E%3C/svg%3E">
+
+<style>
+:root{--p:#0F2942;--p2:#1A4F7A;--acc:#00C896;--dan:#E74C3C;--wrn:#F39C12;--ok:#27AE60;--crit:#8E44AD;--sf:#F7FAFB;--bd:#E8EDF4;--t1:#0F2942;--t2:#5D6D7E;--t3:#9DAFC0;--safe-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif;background:#CBD5E0;-webkit-font-smoothing:antialiased;overscroll-behavior:none;height:100dvh;overflow:hidden}
+#root{width:100%;max-width:430px;margin:0 auto;height:100dvh;background:var(--sf);display:flex;flex-direction:column;position:relative;box-shadow:0 0 60px rgba(0,0,0,.3);overflow:hidden}
+#scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(72px + var(--safe-bottom))}
+#nav{flex-shrink:0;height:calc(60px + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:#fff;border-top:1px solid var(--bd);display:flex;align-items:flex-start;padding-top:6px;box-shadow:0 -4px 20px rgba(0,0,0,.07);z-index:100}
+.page{animation:fadeIn .18s ease;padding:0 0 16px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* Cards */
+.card{background:#fff;border-radius:16px;border:1px solid var(--bd);box-shadow:0 2px 8px rgba(15,41,66,.05)}
+
+/* Inputs */
+input,select,textarea{font-family:inherit;font-size:13px;color:var(--t1);background:var(--sf);border:1.5px solid var(--bd);border-radius:10px;padding:10px 12px;width:100%;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--p2);box-shadow:0 0 0 3px rgba(26,79,122,.1)}
+textarea{resize:vertical;min-height:100px}
+label.fl{font-size:10px;font-weight:800;color:var(--t2);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px}
+
+/* Buttons */
+button{font-family:inherit;cursor:pointer;border:none;background:none;-webkit-appearance:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:700;border-radius:12px;transition:opacity .15s;border:none;font-family:inherit}
+.btn:active{opacity:.7}
+.btn-pri{background:linear-gradient(135deg,var(--p2),var(--p));color:#fff;padding:11px 20px;font-size:13px}
+.btn-sm{padding:8px 14px;font-size:12px}
+.btn-ghost{background:transparent;color:var(--p);border:1.5px solid var(--bd);padding:8px 14px;font-size:12px}
+.btn-sec{background:var(--sf);color:var(--t1);border:1.5px solid var(--bd);padding:8px 14px;font-size:12px}
+.btn-danger{background:var(--dan);color:#fff;padding:8px 14px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Badge */
+.bdg{display:inline-block;font-size:9px;font-weight:800;padding:3px 8px;border-radius:50px;white-space:nowrap}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:flex-end;justify-content:center;padding:0}
+.modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:430px;max-height:90dvh;overflow-y:auto;box-shadow:0 -12px 50px rgba(0,0,0,.25)}
+.modal-handle{width:40px;height:4px;background:var(--bd);border-radius:2px;margin:12px auto 0}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid var(--bd);position:sticky;top:0;background:#fff;z-index:1}
+.modal-body{padding:18px}
+
+/* Nav item */
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 2px;cursor:pointer;position:relative}
+.nav-dot{height:3px;background:var(--p);border-radius:2px;transition:width .3s cubic-bezier(.34,1.56,.64,1);margin-bottom:2px}
+.nav-fab{width:52px;height:52px;margin-top:-20px;border-radius:50%;background:linear-gradient(135deg,var(--p2),var(--p));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 6px 20px rgba(15,41,66,.45);border:3px solid var(--sf)}
+
+/* Filter bar */
+.fbar{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.fbar::-webkit-scrollbar{display:none}
+.fchip{white-space:nowrap;font-size:11px;font-weight:700;padding:6px 12px;border-radius:50px;cursor:pointer;border:none;flex-shrink:0;font-family:inherit;transition:all .15s}
+
+/* Grid helpers */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+
+/* Photo thumb */
+.thumb-wrap{position:relative;width:68px;height:68px;flex-shrink:0}
+.thumb-wrap img{width:100%;height:100%;object-fit:cover;border-radius:10px;border:1px solid var(--bd)}
+.thumb-del{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--dan);color:#fff;font-size:11px;font-weight:800;border:2px solid #fff;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.thumb-add{width:68px;height:68px;border-radius:10px;border:2px dashed var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:2px;flex-shrink:0;background:var(--sf)}
+
+/* Misc */
+.sep{height:1px;background:var(--bd);margin:2px 0}
+.hero{background:linear-gradient(148deg,#081525,var(--p) 55%,var(--p2));padding:22px 16px 20px;border-radius:0 0 22px 22px;margin-bottom:14px}
+.stat-bar-track{flex:1;height:5px;background:var(--sf);border-radius:3px;overflow:hidden}
+.stat-bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.empty-state{text-align:center;padding:40px 20px;border:2px dashed var(--bd);border-radius:16px;margin:0 16px}
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="scroll"></div>
+  <nav id="nav"></nav>
+</div>
+
+<script>
+'use strict';
+// ── CONSTANTS ──────────────────────────────────────────────────────────
+const CLR={p:'#0F2942',p2:'#1A4F7A',acc:'#00C896',dan:'#E74C3C',wrn:'#F39C12',ok:'#27AE60',crit:'#8E44AD',sf:'#F7FAFB',bd:'#E8EDF4',t1:'#0F2942',t2:'#5D6D7E',t3:'#9DAFC0'};
+const SC={ok:CLR.ok,soon:CLR.wrn,urgent:'#E67E22',overdue:CLR.dan,critical:CLR.crit};
+const EM={HVAC_HEATING:'🔥',PUMP:'💧',HVAC_VENT:'🌬️',ELEC_DIST:'⚡',FIRE_PROT:'🚨',VALVE:'🔧',SENSOR:'📡',OTHER:'🏭'};
+const TL={HVAC_HEATING:'Heizung',PUMP:'Pumpe',HVAC_VENT:'Lüftung',ELEC_DIST:'Elektro',FIRE_PROT:'Brandschutz',VALVE:'Ventil',SENSOR:'Sensor',OTHER:'Sonstiges'};
+
+// ── PERSISTENT DB (localStorage) ───────────────────────────────────────
+
+const DB={
+  get(k,d=null){try{const v=localStorage.getItem('fm2_'+k);return v!=null?JSON.parse(v):d}catch{return d}},
+  set(k,v){try{localStorage.setItem('fm2_'+k,JSON.stringify(v))}catch(e){console.warn('Storage full',e)}},
+  del(k){localStorage.removeItem('fm2_'+k)},
+  uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+};
+
+
+// ── APP STATE ──────────────────────────────────────────────────────────
+const state={page:'dashboard',bldDetail:null,roomDetail:null,bldTab:'rooms',tourActive:false};
+
+function navigate(page,extra={}){
+  Object.assign(state,{page,...extra});
+  render();
+}
+
+// ── SEED ───────────────────────────────────────────────────────────────
+function seed(){
+  if(DB.get('seeded'))return;
+  const ago=n=>new Date(Date.now()-n*864e5).toISOString().slice(0,10);
+  const fwd=n=>new Date(Date.now()+n*864e5).toISOString().slice(0,10);
+  DB.set('buildings',[
+    {id:'b1',name:'Verwaltungsgebäude Nord',address:'Musterstraße 12',city:'80333 München',year:1998,area:2400,floors:6,floorplan:null},
+    {id:'b2',name:'Produktionshalle West',address:'Industrieweg 5',city:'80337 München',year:2010,area:5200,floors:1,floorplan:null}
+  ]);
+  DB.set('rooms',[
+    {id:'r1',bid:'b1',name:'Technikraum UG',type:'TECHNICAL',area:45,height_m:2.8,floor:-1,
+     equipment:{floor_type:'Beton',floor_condition:'gut',ceiling_type:'Betondecke',ceiling_condition:'gut',wall_condition:'gut',windows:0,doors:1,lighting_type:'LED',lighting_count:4,lighting_condition:'gut',escape_route:false,defi:false,first_aid:false,fire_ext:1,fire_detector:1},
+     photos:[],scanDone:true},
+    {id:'r2',bid:'b2',name:'Heizraum EG',type:'TECHNICAL',area:30,height_m:3.2,floor:0,
+     equipment:{floor_type:'Beton',floor_condition:'mittel',ceiling_type:'Betondecke',ceiling_condition:'gut',wall_condition:'gut',windows:1,doors:1,lighting_type:'Leuchtstoffröhre',lighting_count:2,lighting_condition:'mittel',escape_route:false,defi:false,first_aid:false,fire_ext:1,fire_detector:1},
+     photos:[],scanDone:true}
+  ]);
+  DB.set('assets',[
+    {id:'a1',rid:'r1',bid:'b1',cat:'TECHNICAL',type:'FIRE_PROT',name:'Brandmeldeanlage BMA-01',mfr:'Minimax',model:'MX 4200',serial:'MIN-2019-4821',year:2019,photos:[]},
+    {id:'a2',rid:'r2',bid:'b2',cat:'TECHNICAL',type:'HVAC_HEATING',name:'Heizkessel Vitodens',mfr:'Viessmann',model:'Vitodens 200-W',serial:'7571-2384-A',year:2019,kw:32,photos:[]},
+    {id:'a3',rid:'r1',bid:'b1',cat:'TECHNICAL',type:'ELEC_DIST',name:'Hauptverteilung NSHV',mfr:'Siemens',model:'SIVACON S8',serial:'SIE-2018-9910',year:2018,photos:[]},
+    {id:'a4',rid:'r2',bid:'b2',cat:'TECHNICAL',type:'PUMP',name:'Umwälzpumpe Grundfos',mfr:'Grundfos',model:'UPS 25-60',serial:'GRU-2020-1234',year:2020,photos:[]},
+    {id:'a5',rid:'r1',bid:'b1',cat:'SAFETY',type:'SAFETY',name:'Feuerlöscher CO2',mfr:'Gloria',model:'CO2 5',serial:'',year:2021,nextCheck:'2025-01-01',photos:[]},
+    {id:'a6',rid:'r2',bid:'b2',cat:'SAFETY',type:'SAFETY',name:'Verbandskasten DIN 13157',mfr:'',model:'',serial:'',year:2022,photos:[]}
+  ]);
+  DB.set('plans',[
+    {id:'p1',aid:'a1',title:'BMA Jahresinspektion',days:365,norm:'DIN 14675',legal:true,due:ago(18),done:ago(383),who:'Brandschutz-Sachkundiger'},
+    {id:'p2',aid:'a3',title:'DGUV V3 Elektroprüfung',days:365,norm:'DGUV V3',legal:true,due:ago(3),done:ago(368),who:'Elektrofachkraft'},
+    {id:'p3',aid:'a2',title:'Abgasmessung 1. BImSchV',days:365,norm:'1. BImSchV',legal:true,due:fwd(6),done:ago(359),who:'Schornsteinfeger'},
+    {id:'p4',aid:'a2',title:'Viessmann Jahreswartung',days:365,norm:'Herstellervorgabe',legal:false,due:fwd(42),done:ago(323),who:'Viessmann-Fachbetrieb'},
+    {id:'p5',aid:'a4',title:'Grundfos Pumpeninspektion',days:365,norm:'VDI 3814',legal:false,due:fwd(95),done:ago(270),who:'Fachbetrieb'},
+    {id:'p6',aid:'a5',title:'Feuerlöscher Jahresprüfung',days:365,norm:'DIN 14406',legal:true,due:ago(10),done:ago(375),who:'Fachbetrieb'},
+    {id:'p7',aid:'a6',title:'Verbandskasten Kontrolle',days:90,norm:'ASR A4.3',legal:true,due:fwd(20),done:ago(70),who:'Ersthelfer'}
+  ]);
+  DB.set('records',[]);
+  DB.set('seeded',1);
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────
+function getSt(p){
+  if(!p.due)return'ok';
+  const d=Math.floor((new Date(p.due)-Date.now())/864e5);
+  return d>30?'ok':d>7?'soon':d>=0?'urgent':p.legal&&Math.abs(d)>7?'critical':'overdue';
+}
+function daysLabel(due){
+  const d=Math.floor((new Date(due)-Date.now())/864e5);
+  return d<0?Math.abs(d)+' T überfällig':d===0?'Heute!':'in '+d+' T';
+}
+function fileToB64(file){return new Promise(r=>{const fr=new FileReader();fr.onload=e=>r(e.target.result);fr.readAsDataURL(file)})}
+function uid(){return DB.uid()}
+function h(tag,props={},children=[]){
+  const el=document.createElement(tag);
+  for(const[k,v]of Object.entries(props)){
+    if(k==='cls')el.className=v;
+    else if(k==='html')el.innerHTML=v;
+    else if(k==='style'&&typeof v==='object')Object.assign(el.style,v);
+    else if(k.startsWith('on'))el.addEventListener(k.slice(2).toLowerCase(),v);
+    else el.setAttribute(k,v);
+  }
+  for(const c of [children].flat(99)){
+    if(c==null||c===false||c===undefined)continue;
+    el.appendChild(typeof c==='string'||typeof c==='number'?document.createTextNode(String(c)):c);
+  }
+  return el;
+}
+const div=(p,c)=>h('div',p,c);
+const span=(p,c)=>h('span',p,c);
+const img=(p)=>h('img',p);
+function badge(col,text){const b=span({cls:'bdg'});b.style.background=col+'22';b.style.color=col;b.textContent=text;return b;}
+function btn(label,cls,onClick,disabled=false){const b=h('button',{cls:'btn '+cls,onclick:onClick},label);if(disabled)b.disabled=true;return b;}
+function card(style={}){const c=div({cls:'card'});Object.assign(c.style,style);return c;}
+function field(label,value,onChange,opts={}){
+  const wrap=div({});
+  if(label)wrap.appendChild(h('label',{cls:'fl'},label));
+  let inp;
+  if(opts.options){
+    inp=h('select');
+    for(const[v,l]of opts.options){const o=h('option',{value:v},l);if(v==value)o.selected=true;inp.appendChild(o);}
+    inp.addEventListener('change',()=>onChange(inp.value));
+  }else if(opts.textarea){
+    inp=h('textarea',{placeholder:opts.ph||''});inp.value=value||'';inp.addEventListener('input',()=>onChange(inp.value));
+  }else{
+    inp=h('input',{type:opts.type||'text',placeholder:opts.ph||''});inp.value=value||'';inp.addEventListener('input',()=>onChange(inp.value));
+  }
+  wrap.appendChild(inp);
+  if(opts.mb!==false)wrap.style.marginBottom='13px';
+  return{wrap,inp};
+}
+
+// ── MODAL ──────────────────────────────────────────────────────────────
+function modal(title,bodyFn,onClose){
+  const overlay=div({cls:'overlay'});
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
+  const box=div({cls:'modal'});
+  box.appendChild(div({cls:'modal-handle'}));
+  const hdr=div({cls:'modal-hdr'});
+  hdr.appendChild(h('strong',{style:{fontSize:'15px',color:CLR.t1}},title));
+  const xBtn=h('button',{style:{fontSize:'24px',color:CLR.t2,background:'none',border:'none',cursor:'pointer',lineHeight:'1',padding:'0 4px'},onclick:close},'×');
+  hdr.appendChild(xBtn);
+  box.appendChild(hdr);
+  const body=div({cls:'modal-body'});
+  box.appendChild(body);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  bodyFn(body,close);
+  function close(){if(onClose)onClose();overlay.remove();}
+  return{overlay,close};
+}
+
+// ── PHOTO PICKER ───────────────────────────────────────────────────────
+function photoPicker(container,photos,onChange,max=8){
+  function render(){
+    container.innerHTML='';
+    const wrap=div({style:{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'flex-start'}});
+    for(let i=0;i<photos.length;i++){
+      const tw=div({cls:'thumb-wrap'});
+      tw.appendChild(img({src:photos[i],style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'10px',border:'1px solid #E8EDF4'}}));
+      const del=div({cls:'thumb-del',onclick:()=>{photos.splice(i,1);onChange([...photos]);render()}},'×');
+      tw.appendChild(del);wrap.appendChild(tw);
+    }
+    if(photos.length<max){
+      const addBtn=div({cls:'thumb-add',onclick:()=>inp.click()});
+      addBtn.appendChild(span({style:{fontSize:'24px'}},'📷'));
+      addBtn.appendChild(span({style:{fontSize:'9px',color:CLR.t2,fontWeight:'700'}},'Foto'));
+      wrap.appendChild(addBtn);
+    }
+    const inp=h('input',{type:'file',accept:'image/*',multiple:'true',style:{display:'none'}});
+    inp.setAttribute('capture','environment');
+    inp.addEventListener('change',async e=>{
+      const files=[...e.target.files];
+      const b64s=await Promise.all(files.map(fileToB64));
+      const merged=[...photos,...b64s].slice(0,max);
+      merged.forEach((_,i)=>photos[i]=merged[i]);photos.length=merged.length;
+      onChange([...photos]);render();e.target.value='';
+    });
+    wrap.appendChild(inp);
+    container.appendChild(wrap);
+    container.appendChild(div({style:{fontSize:'10px',color:CLR.t3,marginTop:'4px'}},photos.length+'/'+max+' Fotos'));
+  }
+  render();
+}
+
+// ── AI ─────────────────────────────────────────────────────────────────
+async function callAI(content,key,prov,isPhoto=false){
+  const jsonPrompt=`Du bist TGA-Experte${isPhoto?' mit OCR':''}.${isPhoto?' Analysiere dieses Bild einer technischen Anlage oder eines Typenschilds. Extrahiere alle erkennbaren Daten per OCR.':' Analysiere: "'+content+'"'}\nAntworte NUR mit JSON (kein Markdown):\n{"assetType":"HVAC_HEATING|PUMP|HVAC_VENT|ELEC_DIST|FIRE_PROT|VALVE|SENSOR|OTHER","name":"string","manufacturer":"string|null","model":"string|null","serial":"string|null","year":number|null,"powerKw":number|null,"confidence":0-100,"ocrText":"string|null","maintenanceRules":[{"title":"string","norm":"string","intervalDays":number,"isLegal":boolean,"responsible":"string"}],"notes":"string"}`;
+  if(prov==='openai'){
+    const msgContent=isPhoto?[{type:'image_url',image_url:{url:content,detail:'high'}},{type:'text',text:jsonPrompt}]:[{type:'text',text:jsonPrompt}];
+    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+key},body:JSON.stringify({model:'gpt-4o',max_tokens:1500,messages:[{role:'user',content:msgContent}]})});
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}
+    return(await r.json()).choices[0].message.content;
+  }
+  const msgContent=isPhoto?[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:content.replace(/^data:image\/\w+;base64,/,'')}},{type:'text',text:jsonPrompt}]:[{type:'text',text:jsonPrompt}];
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:msgContent}]})});
+  if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}
+  return(await r.json()).content[0].text;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// PAGES
+// ══════════════════════════════════════════════════════════════════════
+
+// ── DASHBOARD ──────────────────────────────────────────────────────────
+function pageDashboard(){
+  const plans=DB.get('plans',[]),assets=DB.get('assets',[]),blds=DB.get('buildings',[]);
+  const rooms=DB.get('rooms',[]);
+  const sum=plans.reduce((a,p)=>{const s=getSt(p);a[s]=(a[s]||0)+1;return a},{});
+  const critN=(sum.critical||0)+(sum.overdue||0)+(sum.urgent||0);
+  const urgent=plans.filter(p=>['critical','overdue','urgent'].includes(getSt(p))).sort((a,b)=>new Date(a.due)-new Date(b.due));
+  const tourReady=blds.filter(b=>rooms.filter(r=>r.bid===b.id).length>0).length;
+
+  const root=div({cls:'page'});
+  const hero=div({cls:'hero'});
+  hero.appendChild(div({style:{fontSize:'11px',color:'rgba(255,255,255,.4)',marginBottom:'4px'}},new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})));
+  const t=div({style:{fontSize:'24px',fontWeight:'800',color:'#fff',letterSpacing:'-.5px',marginBottom:'2px'}});
+  t.innerHTML='FacilityMind <span style="color:#00C896">AI</span>';hero.appendChild(t);
+  hero.appendChild(div({style:{fontSize:'12px',color:'rgba(255,255,255,.4)'}},blds.length+' Gebäude · '+rooms.length+' Räume · '+assets.length+' Anlagen'));
+  if((sum.critical||0)>0){
+    const alert=div({cls:'card',style:{background:'rgba(231,76,60,.18)',border:'1px solid rgba(231,76,60,.3)',borderRadius:'12px',padding:'10px 14px',marginTop:'14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer'},onclick:()=>navigate('maintenance')});
+    alert.appendChild(span({},'🚨'));
+    const at=div({style:{flex:'1'}});
+    at.appendChild(div({style:{fontSize:'11px',fontWeight:'800',color:'#FF7070'}},sum.critical+' KRITISCH – Sofort handeln!'));
+    at.appendChild(div({style:{fontSize:'10px',color:'rgba(255,255,255,.4)'}},'Gesetzliche Pflicht überfällig'));
+    alert.appendChild(at);alert.appendChild(span({style:{color:'rgba(255,100,100,.5)'}},'›'));
+    hero.appendChild(alert);
+  }
+  root.appendChild(hero);
+
+  // KPIs
+  const kpis=div({cls:'g4',style:{padding:'0 14px 14px'}});
+  [[blds.length,'Gebäude',CLR.p],[rooms.length,'Räume',CLR.p2],[critN,'Aktion',CLR.dan],[plans.length,'Pläne',CLR.acc]].forEach(([v,l,col])=>{
+    const k=card({padding:'12px 8px',textAlign:'center'});
+    k.appendChild(div({style:{fontSize:'22px',fontWeight:'800',color:col,lineHeight:'1'}},v));
+    k.appendChild(div({style:{fontSize:'9px',fontWeight:'700',color:CLR.t2,marginTop:'2px',textTransform:'uppercase'}},l));
+    kpis.appendChild(k);
+  });
+  root.appendChild(kpis);
+
+  // Status bars
+  const sw=div({style:{padding:'0 14px 14px'}});
+  sw.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'Wartungsstatus'));
+  const sc=card({padding:'14px'});
+  [['ok','OK',CLR.ok],['soon','Bald',CLR.wrn],['urgent','Dringend','#E67E22'],['overdue','Überfällig',CLR.dan],['critical','Kritisch §',CLR.crit]].forEach(([k,l,col])=>{
+    const row=div({style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}});
+    row.appendChild(div({style:{width:'8px',height:'8px',borderRadius:'50%',background:col,flexShrink:'0'}}));
+    row.appendChild(div({style:{fontSize:'11px',color:CLR.t1,width:'76px',flexShrink:'0'}},l));
+    const track=div({cls:'stat-bar-track'});
+    const fill=div({cls:'stat-bar-fill',style:{width:plans.length?((sum[k]||0)/plans.length*100)+'%':'0%',background:col}});
+    track.appendChild(fill);row.appendChild(track);
+    row.appendChild(div({style:{fontSize:'11px',fontWeight:'800',color:col,width:'16px',textAlign:'right'}},sum[k]||0));
+    sc.appendChild(row);
+  });
+  sw.appendChild(sc);root.appendChild(sw);
+
+  // Urgent
+  if(urgent.length){
+    const uw=div({style:{padding:'0 14px 14px'}});
+    const uh=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}});
+    uh.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1}},'Dringend'));
+    uh.appendChild(span({style:{fontSize:'11px',fontWeight:'600',color:CLR.p2,cursor:'pointer'},onclick:()=>navigate('maintenance')},'Alle →'));
+    uw.appendChild(uh);
+    for(const p of urgent.slice(0,3)){
+      const s=getSt(p),col=SC[s];
+      const a=DB.get('assets',[]).find(x=>x.id===p.aid);
+      const row=card({padding:'11px 13px',display:'flex',alignItems:'center',gap:'9px',marginBottom:'8px',cursor:'pointer'});
+      row.addEventListener('click',()=>navigate('maintenance'));
+      row.appendChild(div({style:{width:'3px',alignSelf:'stretch',borderRadius:'2px',background:col,flexShrink:'0'}}));
+      const thumb=a?.photos?.[0]?img({src:a.photos[0],style:{width:'34px',height:'34px',objectFit:'cover',borderRadius:'8px',flexShrink:'0'}}):div({style:{width:'34px',height:'34px',borderRadius:'9px',background:col+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:'0'}},EM[a?.type]||'🔧');
+      row.appendChild(thumb);
+      const info=div({style:{flex:'1',minWidth:'0'}});
+      info.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.title));
+      info.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'1px'}},(a?.name||'')+' · '+p.norm));
+      row.appendChild(info);
+      row.appendChild(badge(col,daysLabel(p.due)));
+      uw.appendChild(row);
+    }
+    root.appendChild(uw);
+  }
+
+  // Quick access
+  const qw=div({style:{padding:'0 14px 14px'}});
+  qw.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'Schnellzugriff'));
+  const qg=div({cls:'g2'});
+  [['📷','KI-Scan','Anlage analysieren','scan'],['🏗️','Gebäude','Grundriss & Räume','buildings'],['🔧','Wartung','Übersicht','maintenance'],['⚙️','Einstellungen','API & Daten','settings']].forEach(([e,l,sub,pg])=>{
+    const c=card({padding:'13px 12px',cursor:'pointer'});
+    c.appendChild(div({style:{fontSize:'26px',marginBottom:'7px'}},e));
+    c.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1}},l));
+    c.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'1px'}},sub));
+    c.addEventListener('click',()=>navigate(pg));
+    qg.appendChild(c);
+  });
+  qw.appendChild(qg);root.appendChild(qw);
+
+  if(!window.matchMedia('(display-mode: standalone)').matches){
+    const hint=div({style:{margin:'0 14px 14px',padding:'10px 14px',background:CLR.acc+'18',border:'1px solid '+CLR.acc+'44',borderRadius:'12px'}});
+    hint.appendChild(div({style:{fontSize:'11px',fontWeight:'800',color:CLR.acc,marginBottom:'2px'}},'📲 Als App installieren'));
+    hint.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},'Safari → Teilen → „Zum Home-Bildschirm"'));
+    root.appendChild(hint);
+  }
+  return root;
+}
+
+// ── BUILDINGS LIST ──────────────────────────────────────────────────────
+function pageBuildings(){
+  const root=div({cls:'page',style:{padding:'0 0 16px'}});
+  if(state.bldDetail)return pageBuildingDetail(state.bldDetail);
+
+  const buildings=DB.get('buildings',[]);
+  const assets=DB.get('assets',[]),plans=DB.get('plans',[]),rooms=DB.get('rooms',[]);
+
+  const stOf=bid=>{
+    const ba=assets.filter(a=>a.bid===bid);
+    const bp=plans.filter(p=>ba.some(a=>a.id===p.aid));
+    const crit=bp.filter(p=>getSt(p)==='critical').length;
+    const over=bp.filter(p=>['overdue','critical'].includes(getSt(p))).length;
+    const urg=bp.filter(p=>getSt(p)==='urgent').length;
+    if(crit)return{l:crit+' Kritisch ⚖',c:CLR.crit};
+    if(over)return{l:over+' Überfällig',c:CLR.dan};
+    if(urg)return{l:urg+' Dringend',c:CLR.wrn};
+    return{l:'OK ✓',c:CLR.ok};
+  };
+
+  const hdr=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 16px 12px'}});
+  hdr.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:CLR.t1}},'Gebäude'));
+  hdr.appendChild(btn('＋ Neu','btn-pri btn-sm',()=>showBldForm()));
+  root.appendChild(hdr);
+
+  const list=div({style:{display:'flex',flexDirection:'column',gap:'10px',padding:'0 14px'}});
+  for(const b of buildings){
+    const st=stOf(b.id);
+    const br=rooms.filter(r=>r.bid===b.id);
+    const ba=assets.filter(a=>a.bid===b.id);
+    const scanDone=br.filter(r=>r.scanDone).length;
+    const c=card({overflow:'hidden',cursor:'pointer'});
+    c.addEventListener('click',()=>navigate('buildings',{bldDetail:b.id}));
+    const top=div({style:{padding:'13px 14px',display:'flex',alignItems:'center',gap:'11px'}});
+    // Floorplan thumb or icon
+    if(b.floorplan){
+      top.appendChild(img({src:b.floorplan,style:{width:'48px',height:'48px',objectFit:'cover',borderRadius:'10px',border:'1px solid '+CLR.bd,flexShrink:'0'}}));
+    }else{
+      top.appendChild(div({style:{width:'48px',height:'48px',borderRadius:'12px',background:CLR.sf,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'26px',flexShrink:'0'}},'🏢'));
+    }
+    const info=div({style:{flex:'1',minWidth:'0'}});
+    info.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1}},b.name));
+    info.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'2px'}},b.address+' · '+b.city));
+    const trow=div({style:{display:'flex',gap:'5px',marginTop:'4px',flexWrap:'wrap'}});
+    trow.appendChild(badge(st.c,st.l));
+    if(b.floorplan)trow.appendChild(badge(CLR.acc,'📐 Grundriss'));
+    info.appendChild(trow);
+    top.appendChild(info);
+    // Edit/delete actions
+    const acts=div({style:{display:'flex',flexDirection:'column',gap:'4px',flexShrink:'0'}});
+    const editB=btn('✏️','',e=>{e.stopPropagation();showBldForm(b);});
+    editB.style.cssText='background:'+CLR.sf+';border:1px solid '+CLR.bd+';border-radius:7px;cursor:pointer;padding:5px 8px;font-size:12px;';
+    const delB=btn('🗑️','',e=>{e.stopPropagation();if(!confirm('Gebäude "'+b.name+'" löschen?\nAlle Räume und Anlagen werden ebenfalls gelöscht!'))return;
+      DB.set('buildings',DB.get('buildings',[]).filter(x=>x.id!==b.id));
+      DB.set('rooms',DB.get('rooms',[]).filter(x=>x.bid!==b.id));
+      const bAids=DB.get('assets',[]).filter(a=>a.bid===b.id).map(a=>a.id);
+      DB.set('assets',DB.get('assets',[]).filter(a=>a.bid!==b.id));
+      DB.set('plans',DB.get('plans',[]).filter(p=>!bAids.includes(p.aid)));
+      render();});
+    delB.style.cssText='background:'+CLR.dan+'18;border:1px solid '+CLR.dan+'33;border-radius:7px;cursor:pointer;padding:5px 8px;font-size:12px;';
+    acts.appendChild(editB);acts.appendChild(delB);
+    top.appendChild(acts);
+    c.appendChild(top);
+    const foot=div({style:{background:CLR.sf,borderTop:'1px solid '+CLR.bd,padding:'7px 14px',display:'flex',gap:'12px'}});
+    [['🏗️',b.year],['📐',(b.area||'?')+'m²'],['🚪',br.length+' Räume'],['🔧',ba.length+' Anlagen'],['✅',scanDone+'/'+br.length+' gescannt']].forEach(([ic,v])=>{
+      const it=div({style:{display:'flex',alignItems:'center',gap:'3px',fontSize:'10px',color:CLR.t2,fontWeight:'600'}});
+      it.appendChild(span({},ic));it.appendChild(span({},v));foot.appendChild(it);
+    });
+    c.appendChild(foot);list.appendChild(c);
+  }
+  const add=div({style:{border:'2px dashed '+CLR.bd,borderRadius:'16px',padding:'20px',textAlign:'center',cursor:'pointer'},onclick:()=>showBldForm()});
+  add.appendChild(div({style:{fontSize:'24px',marginBottom:'6px'}},'➕'));
+  add.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t2}},'Neues Gebäude'));
+  list.appendChild(add);root.appendChild(list);
+  return root;
+
+  function showBldForm(existing){
+    let f=existing?{...existing}:{id:uid(),name:'',address:'',city:'',year:new Date().getFullYear(),area:'',floors:'',floorplan:null};
+    modal(existing?'Gebäude bearbeiten':'Neues Gebäude',(body,close)=>{
+      const {wrap:nw,inp:ni}=field('Name *',f.name,v=>f.name=v,{ph:'Verwaltungsgebäude Nord'});
+      const {wrap:aw}=field('Adresse',f.address,v=>f.address=v,{ph:'Musterstraße 12'});
+      const {wrap:cw}=field('Stadt & PLZ',f.city,v=>f.city=v,{ph:'80333 München'});
+      const g=div({cls:'g3'});
+      const {wrap:yw}=field('Baujahr',f.year,v=>f.year=v,{type:'number'});
+      const {wrap:mw}=field('m²',f.area,v=>f.area=v,{type:'number'});
+      const {wrap:fw}=field('Etagen',f.floors,v=>f.floors=v,{type:'number'});
+      g.appendChild(yw);g.appendChild(mw);g.appendChild(fw);
+      const btns=div({style:{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'4px'}});
+      btns.appendChild(btn('Abbrechen','btn-ghost',close));
+      btns.appendChild(btn('💾 Speichern','btn-pri btn-sm',()=>{
+        if(!f.name.trim())return;
+        f.year=+f.year;f.area=+f.area;f.floors=+f.floors;
+        const blds=DB.get('buildings',[]);
+        const idx=blds.findIndex(x=>x.id===f.id);
+        if(idx>=0)blds[idx]=f;else blds.push(f);
+        DB.set('buildings',blds);close();render();
+      }));
+      [nw,aw,cw,g,btns].forEach(el=>body.appendChild(el));
+      setTimeout(()=>ni.focus(),100);
+    });
+  }
+}
+
+// ── BUILDING DETAIL ─────────────────────────────────────────────────────
+function pageBuildingDetail(bid){
+  const b=DB.get('buildings',[]).find(x=>x.id===bid);
+  if(!b)return pageDashboard();
+  if(state.roomDetail)return pageRoomDetail(bid,state.roomDetail);
+
+  const plans=DB.get('plans',[]);
+  const bAssets=()=>DB.get('assets',[]).filter(a=>a.bid===bid);
+  const bRooms=()=>DB.get('rooms',[]).filter(r=>r.bid===bid);
+
+  const root=div({cls:'page'});
+
+  // Hero
+  const hero=div({style:{background:`linear-gradient(135deg,${CLR.p},${CLR.p2})`,padding:'14px 16px 18px'}});
+  const backBtn=btn('← Zurück','btn-sm',()=>{state.bldDetail=null;state.bldTab=null;render();});
+  backBtn.style.cssText='background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;display:inline-flex;align-items:center;font-family:inherit';
+  hero.appendChild(backBtn);
+  hero.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:'#fff',marginBottom:'2px'}},b.name));
+  hero.appendChild(div({style:{fontSize:'11px',color:'rgba(255,255,255,.5)'}},b.address+' · '+b.city));
+  const htags=div({style:{display:'flex',gap:'6px',marginTop:'10px',flexWrap:'wrap'}});
+  [[(b.area||'?')+'m²','📐'],[(b.floors||'?')+' OG','🪜'],[bAssets().length+' Anlagen','🔧'],[bRooms().length+' Räume','🚪']].forEach(([v,ic])=>{
+    htags.appendChild(span({style:{background:'rgba(255,255,255,.12)',color:'rgba(255,255,255,.75)',fontSize:'10px',fontWeight:'700',padding:'3px 8px',borderRadius:'50px'}},ic+' '+v));
+  });
+  hero.appendChild(htags);root.appendChild(hero);
+
+  // Tab bar
+  let activeTab=state.bldTab||'overview';
+  const tabBar=div({style:{display:'flex',background:'#fff',borderBottom:'1px solid '+CLR.bd,padding:'0 8px',overflowX:'auto'}});
+  const tabContent=div({style:{padding:'14px 14px 0'}});
+  root.appendChild(tabBar);root.appendChild(tabContent);
+
+  function setTab(t){activeTab=t;state.bldTab=t;buildTabBar();buildTabContent();}
+  function buildTabBar(){
+    tabBar.innerHTML='';
+    [['overview','📐 Übersicht'],['rooms','🚪 Räume'],['assets','🔧 Inventar'],['plans','📋 Wartung']].forEach(([k,l])=>{
+      const tb=div({style:{padding:'11px 12px',fontSize:'11px',fontWeight:'700',cursor:'pointer',borderBottom:'3px solid '+(activeTab===k?CLR.p:'transparent'),color:activeTab===k?CLR.p:CLR.t2,whiteSpace:'nowrap',flexShrink:'0'},onclick:()=>setTab(k)},l);
+      tabBar.appendChild(tb);
+    });
+  }
+  function buildTabContent(){
+    tabContent.innerHTML='';
+    if(activeTab==='overview')buildOverviewTab();
+    else if(activeTab==='rooms')buildRoomsTab();
+    else if(activeTab==='assets')buildAssetsTab();
+    else buildPlansTab();
+  }
+
+  // ── OVERVIEW TAB ────────────────────────────────────────────────────
+  function buildOverviewTab(){
+    const rooms=bRooms(),assets=bAssets();
+    const scanDone=rooms.filter(r=>r.scanDone).length;
+    const progress=rooms.length?Math.round(scanDone/rooms.length*100):0;
+
+    // Floorplan card
+    const fpc=card({padding:'16px',marginBottom:'12px'});
+    fpc.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'📐 Grundriss'));
+    if(b.floorplan){
+      fpc.appendChild(img({src:b.floorplan,style:{width:'100%',maxHeight:'200px',objectFit:'contain',borderRadius:'12px',border:'1px solid '+CLR.bd,marginBottom:'10px'}}));
+      const frow=div({style:{display:'flex',gap:'8px'}});
+      frow.appendChild(btn('🗑️ Entfernen','btn-ghost btn-sm',()=>{
+        if(!confirm('Grundriss entfernen?'))return;
+        const blds=DB.get('buildings',[]).map(x=>x.id===bid?{...x,floorplan:null}:x);
+        DB.set('buildings',blds);buildTabContent();
+      }));
+      frow.appendChild(btn('🔄 Ersetzen','btn-sec btn-sm',()=>fpInp.click()));
+      fpc.appendChild(frow);
+    }else{
+      const fpDrop=div({style:{border:'2px dashed '+CLR.bd,borderRadius:'12px',padding:'24px 16px',textAlign:'center',cursor:'pointer',background:CLR.sf,marginBottom:'10px'},onclick:()=>fpInp.click()});
+      fpDrop.appendChild(div({style:{fontSize:'36px',marginBottom:'8px'}},'📄'));
+      fpDrop.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'Grundriss hochladen'));
+      fpDrop.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'PDF oder Foto des Grundrisses'));
+      fpDrop.appendChild(div({style:{marginTop:'10px',display:'inline-flex',gap:'6px'}},[badge(CLR.p,'PDF'),badge(CLR.p2,'JPG'),badge(CLR.p2,'PNG')]));
+      fpc.appendChild(fpDrop);
+    }
+    const fpInp=h('input',{type:'file',accept:'image/*,application/pdf',style:{display:'none'}});
+    fpInp.addEventListener('change',async e=>{
+      const file=e.target.files[0];if(!file)return;
+      let b64;
+      if(file.type==='application/pdf'){
+        // Render PDF page 1 to canvas
+        b64=await pdfToImage(file);
+      }else{
+        b64=await fileToB64(file);
+      }
+      const blds=DB.get('buildings',[]).map(x=>x.id===bid?{...x,floorplan:b64}:x);
+      DB.set('buildings',blds);e.target.value='';buildTabContent();
+    });
+    fpc.appendChild(fpInp);
+    tabContent.appendChild(fpc);
+
+    // Guided tour card
+    const tc=card({padding:'16px',marginBottom:'12px'});
+    tc.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'4px'}},'🚀 Geführter Rundgang'));
+    tc.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'12px'}},'App führt dich Raum für Raum durch das Gebäude'));
+    if(rooms.length>0){
+      const prog=div({style:{marginBottom:'12px'}});
+      const ptrack=div({style:{height:'6px',background:CLR.sf,borderRadius:'3px',overflow:'hidden',marginBottom:'4px'}});
+      ptrack.appendChild(div({style:{width:progress+'%',height:'100%',background:progress===100?CLR.ok:CLR.acc,borderRadius:'3px',transition:'width .4s'}}));
+      prog.appendChild(ptrack);
+      prog.appendChild(div({style:{fontSize:'10px',color:CLR.t2,fontWeight:'600'}},scanDone+' von '+rooms.length+' Räumen erfasst · '+progress+'%'));
+      tc.appendChild(prog);
+    }
+    const tbtns=div({style:{display:'flex',gap:'8px',flexWrap:'wrap'}});
+    if(rooms.length===0){
+      // Start tour from scratch - need to know rooms first
+      tbtns.appendChild(btn('🔍 KI liest Grundriss','btn-pri',()=>{
+        if(!b.floorplan){alert('Bitte zuerst Grundriss hochladen');return;}
+        startFloorplanScan();
+      }));
+      tbtns.appendChild(btn('＋ Räume manuell','btn-ghost btn-sm',()=>setTab('rooms')));
+    }else{
+      const nextRoom=rooms.find(r=>!r.scanDone);
+      if(nextRoom){
+        tbtns.appendChild(btn('▶ Rundgang fortsetzen','btn-pri',()=>startGuidedTour(rooms)));
+      }else{
+        tbtns.appendChild(btn('✅ Rundgang abgeschlossen','btn-sec btn-sm',()=>{}));
+        tbtns.appendChild(btn('🔄 Neu starten','btn-ghost btn-sm',()=>{
+          if(!confirm('Alle Scan-Status zurücksetzen?'))return;
+          const ur=DB.get('rooms',[]).map(r=>r.bid===bid?{...r,scanDone:false}:r);
+          DB.set('rooms',ur);buildTabContent();
+        }));
+      }
+      tbtns.appendChild(btn('＋ Raum hinzufügen','btn-ghost btn-sm',()=>setTab('rooms')));
+    }
+    tc.appendChild(tbtns);tabContent.appendChild(tc);
+
+    // Stats
+    const st=card({padding:'14px',marginBottom:'12px'});
+    st.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'📊 Übersicht'));
+    const sg=div({cls:'g3'});
+    [[rooms.length,'Räume',CLR.p],[assets.filter(a=>a.cat==='TECHNICAL').length,'Technisch',CLR.p2],[assets.filter(a=>a.cat==='SAFETY').length,'Sicherheit',CLR.dan]].forEach(([v,l,col])=>{
+      const sc=div({style:{background:CLR.sf,borderRadius:'10px',padding:'10px',textAlign:'center'}});
+      sc.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:col}},v));
+      sc.appendChild(div({style:{fontSize:'9px',color:CLR.t2,fontWeight:'600'}},l));
+      sg.appendChild(sc);
+    });
+    st.appendChild(sg);tabContent.appendChild(st);
+  }
+
+  // ── PDF TO IMAGE ────────────────────────────────────────────────────
+  async function pdfToImage(file){
+    return new Promise((resolve)=>{
+      const fr=new FileReader();
+      fr.onload=async(e)=>{
+        try{
+          // Use PDF.js if available, otherwise just store as base64 data URI
+          const arr=new Uint8Array(e.target.result);
+          // Try PDF.js CDN
+          if(!window.pdfjsLib){
+            const script=document.createElement('script');
+            script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            script.onload=async()=>{
+              window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+              const pdf=await window.pdfjsLib.getDocument({data:arr}).promise;
+              const page=await pdf.getPage(1);
+              const vp=page.getViewport({scale:1.5});
+              const canvas=document.createElement('canvas');
+              canvas.width=vp.width;canvas.height=vp.height;
+              await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+              resolve(canvas.toDataURL('image/jpeg',0.85));
+            };
+            script.onerror=()=>resolve('data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280"><rect width="200" height="280" fill="#f0f4f8"/><text x="100" y="140" text-anchor="middle" font-size="14" fill="#5D6D7E">PDF Grundriss</text><text x="100" y="160" text-anchor="middle" font-size="11" fill="#9DAFC0">geladen</text></svg>'));
+            document.head.appendChild(script);
+          }else{
+            const pdf=await window.pdfjsLib.getDocument({data:arr}).promise;
+            const page=await pdf.getPage(1);
+            const vp=page.getViewport({scale:1.5});
+            const canvas=document.createElement('canvas');
+            canvas.width=vp.width;canvas.height=vp.height;
+            await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+            resolve(canvas.toDataURL('image/jpeg',0.85));
+          }
+        }catch(err){
+          resolve('data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280"><rect width="200" height="280" fill="#f0f4f8"/><text x="100" y="130" text-anchor="middle" font-size="40">📄</text><text x="100" y="165" text-anchor="middle" font-size="13" fill="#5D6D7E">PDF Grundriss</text><text x="100" y="182" text-anchor="middle" font-size="10" fill="#9DAFC0">geladen ✓</text></svg>'));
+        }
+      };
+      fr.readAsArrayBuffer(file);
+    });
+  }
+
+  // ── KI GRUNDRISS SCAN ───────────────────────────────────────────────
+  function startFloorplanScan(){
+    const apiKey=DB.get('apiKey',''),provider=DB.get('provider','claude');
+    if(!apiKey){alert('Bitte API-Key in Einstellungen eintragen');return;}
+    const ov=div({cls:'overlay'});
+    const box=div({cls:'modal'});
+    box.appendChild(div({cls:'modal-handle'}));
+    const mhdr=div({cls:'modal-hdr'});
+    mhdr.appendChild(h('strong',{style:{fontSize:'15px',color:CLR.t1}},'🏗️ Grundriss analysieren'));
+    mhdr.appendChild(h('button',{style:{fontSize:'24px',color:CLR.t2,background:'none',border:'none',cursor:'pointer',padding:'0 4px'},onclick:()=>ov.remove()},'×'));
+    box.appendChild(mhdr);
+    const mbody=div({cls:'modal-body'});
+    box.appendChild(mbody);ov.appendChild(box);document.body.appendChild(ov);
+
+    const spin=div({style:{textAlign:'center',padding:'30px 20px'}});
+    const sp=div({style:{fontSize:'48px',display:'inline-block',animation:'spin 1s linear infinite',marginBottom:'16px'}});sp.textContent='⟳';
+    spin.appendChild(sp);
+    spin.appendChild(div({style:{fontSize:'14px',fontWeight:'700',color:CLR.t1,marginBottom:'6px'}},'KI analysiert Grundriss…'));
+    spin.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'Räume werden automatisch erkannt'));
+    mbody.appendChild(spin);
+
+    const prompt=`Du bist Facility Manager. Analysiere diesen Gebäudegrundriss.
+Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
+{"rooms":[{"name":"Raumname","type":"OFFICE|TECHNICAL|CORRIDOR|STORAGE|WC|MEETING|STAIRCASE|OTHER","area_m2":Zahl_oder_null,"floor":Zahl_oder_0,"notes":"string"}],"floors":Anzahl_Stockwerke,"total_area_m2":Zahl_oder_null}`;
+
+    const imgData=b.floorplan.replace(/^data:image\/\w+;base64,/,'');
+    const msgContent=provider==='openai'
+      ?[{type:'image_url',image_url:{url:b.floorplan,detail:'high'}},{type:'text',text:prompt}]
+      :[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:imgData}},{type:'text',text:prompt}];
+
+    const fetchProm=provider==='openai'
+      ?fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+apiKey},body:JSON.stringify({model:'gpt-4o',max_tokens:2000,messages:[{role:'user',content:msgContent}]})}).then(r=>r.json()).then(d=>d.choices[0].message.content)
+      :fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:msgContent}]})}).then(r=>r.json()).then(d=>d.content[0].text);
+
+    fetchProm.then(raw=>{
+      const result=JSON.parse(raw.replace(/```json?|```/g,'').trim());
+      mbody.innerHTML='';
+      mbody.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'4px'}},result.rooms.length+' Räume erkannt'));
+      mbody.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'14px'}},'Werden als Vorlage für den Rundgang gespeichert'));
+      const rl=div({style:{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'16px',maxHeight:'300px',overflowY:'auto'}});
+      result.rooms.forEach(r=>{
+        const rc=div({style:{display:'flex',gap:'8px',padding:'8px 10px',background:CLR.sf,borderRadius:'10px',alignItems:'center'}});
+        rc.appendChild(span({style:{fontSize:'18px'}},r.type==='WC'?'🚻':r.type==='CORRIDOR'?'🚶':r.type==='TECHNICAL'?'⚙️':r.type==='MEETING'?'👥':r.type==='STORAGE'?'📦':'🚪'));
+        const ri=div({style:{flex:'1'}});
+        ri.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1}},r.name));
+        if(r.area_m2)ri.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},r.area_m2+'m² · '+r.type));
+        rc.appendChild(ri);rl.appendChild(rc);
+      });
+      mbody.appendChild(rl);
+      const fbtns=div({style:{display:'flex',gap:'8px'}});
+      fbtns.appendChild(btn('Abbrechen','btn-ghost',()=>ov.remove()));
+      fbtns.appendChild(btn('✓ Räume übernehmen & Rundgang starten','btn-pri',()=>{
+        const existRooms=DB.get('rooms',[]).filter(r=>r.bid!==bid);
+        const newRooms=result.rooms.map(r=>({id:uid(),bid:bid,name:r.name,type:r.type,area:r.area_m2,floor:r.floor||0,height_m:null,equipment:null,photos:[],scanDone:false,notes:r.notes}));
+        DB.set('rooms',[...existRooms,...newRooms]);
+        ov.remove();startGuidedTour(newRooms);
+      }));
+      mbody.appendChild(fbtns);
+    }).catch(e=>{mbody.innerHTML='';mbody.appendChild(div({style:{padding:'20px',color:CLR.dan,fontWeight:'700',textAlign:'center'}},'Fehler: '+e.message));});
+  }
+
+  // ── GEFÜHRTER RUNDGANG ──────────────────────────────────────────────
+  function startGuidedTour(rooms){
+    const pending=rooms.filter(r=>!r.scanDone);
+    if(!pending.length){buildTabContent();return;}
+    let tourIdx=0;
+    showTourRoom(pending,tourIdx);
+  }
+
+  function showTourRoom(rooms,idx){
+    const room=rooms[idx];
+    if(!room){buildTabContent();return;}
+    const total=rooms.length;
+    const apiKey=DB.get('apiKey',''),provider=DB.get('provider','claude');
+
+    const ov=div({cls:'overlay'});
+    const box=div({cls:'modal',style:{maxHeight:'95dvh'}});
+    box.appendChild(div({cls:'modal-handle'}));
+
+    // Tour header with progress
+    const mhdr=div({style:{padding:'14px 18px 12px',borderBottom:'1px solid '+CLR.bd,position:'sticky',top:'0',background:'#fff',zIndex:'1'}});
+    const hrow=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}});
+    hrow.appendChild(h('strong',{style:{fontSize:'14px',color:CLR.t1}},'🚶 Rundgang: '+room.name));
+    hrow.appendChild(h('button',{style:{fontSize:'20px',color:CLR.t2,background:'none',border:'none',cursor:'pointer'},onclick:()=>{ov.remove();buildTabContent();}},'×'));
+    mhdr.appendChild(hrow);
+    // Progress bar
+    const prog=div({style:{height:'4px',background:CLR.sf,borderRadius:'2px',overflow:'hidden',marginBottom:'4px'}});
+    prog.appendChild(div({style:{width:((idx)/total*100)+'%',height:'100%',background:CLR.acc,borderRadius:'2px'}}));
+    mhdr.appendChild(prog);
+    mhdr.appendChild(div({style:{fontSize:'10px',color:CLR.t2,fontWeight:'600'}},'Raum '+(idx+1)+' von '+total+' · '+Math.round((idx/total)*100)+'% abgeschlossen'));
+    box.appendChild(mhdr);
+
+    const mbody=div({cls:'modal-body'});
+    box.appendChild(mbody);ov.appendChild(box);document.body.appendChild(ov);
+
+    // Floorplan reference
+    if(b.floorplan){
+      const fpRef=div({style:{marginBottom:'14px',padding:'8px',background:CLR.sf,borderRadius:'10px',textAlign:'center'}});
+      fpRef.appendChild(div({style:{fontSize:'10px',fontWeight:'700',color:CLR.t2,marginBottom:'5px'}},'📐 Grundriss-Referenz'));
+      fpRef.appendChild(img({src:b.floorplan,style:{width:'100%',maxHeight:'100px',objectFit:'contain',borderRadius:'6px'}}));
+      fpRef.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p,marginTop:'5px'}},'→ Aktuell: '+room.name));
+      mbody.appendChild(fpRef);
+    }
+
+    let photos=[];
+    let step='capture'; // capture | scanning | equipment | done
+    let scanResult=null;
+
+    // Equipment data (populated after scan or manually)
+    let eq={
+      floor_type:'',floor_condition:'gut',
+      ceiling_type:'',ceiling_condition:'gut',
+      wall_condition:'gut',
+      windows:0,window_type:'',window_condition:'gut',
+      doors:1,
+      lighting_type:'',lighting_count:0,lighting_condition:'gut',
+      escape_route:false,escape_route_sign:false,
+      defi:false,first_aid:false,
+      fire_ext:0,fire_detector:0,
+      area:room.area||null,height_m:room.height_m||null
+    };
+
+    function renderTourBody(){
+      mbody.innerHTML='';
+      if(b.floorplan){
+        const fpRef=div({style:{marginBottom:'14px',padding:'8px',background:CLR.sf,borderRadius:'10px',textAlign:'center'}});
+        fpRef.appendChild(div({style:{fontSize:'10px',fontWeight:'700',color:CLR.t2,marginBottom:'4px'}},'📐 Aktuell: '+room.name));
+        fpRef.appendChild(img({src:b.floorplan,style:{width:'100%',maxHeight:'80px',objectFit:'contain',borderRadius:'6px'}}));
+        mbody.appendChild(fpRef);
+      }
+
+      if(step==='capture'){
+        renderCapture();
+      }else if(step==='scanning'){
+        const s=div({style:{textAlign:'center',padding:'30px 20px'}});
+        const sp=div({style:{fontSize:'48px',display:'inline-block',animation:'spin 1s linear infinite',marginBottom:'12px'}});sp.textContent='⟳';
+        s.appendChild(sp);
+        s.appendChild(div({style:{fontSize:'14px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'KI analysiert Raum…'));
+        s.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'Ausstattung · Sicherheit · Anlagen'));
+        mbody.appendChild(s);
+      }else if(step==='equipment'){
+        renderEquipmentForm();
+      }
+    }
+
+    function renderCapture(){
+      mbody.appendChild(div({style:{fontSize:'12px',color:CLR.t2,marginBottom:'12px'}},'Fotografiere "'+room.name+'" aus verschiedenen Winkeln. KI erfasst dann alles automatisch.'));
+      const grid=div({style:{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}});
+      photos.forEach((p,i)=>{
+        const tw=div({style:{position:'relative',width:'76px',height:'76px'}});
+        tw.appendChild(img({src:p,style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'10px'}}));
+        const del=div({style:{position:'absolute',top:'-6px',right:'-6px',width:'20px',height:'20px',borderRadius:'50%',background:CLR.dan,color:'#fff',fontSize:'11px',fontWeight:'800',border:'2px solid #fff',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'},onclick:()=>{photos.splice(i,1);renderTourBody();}});
+        del.textContent='×';tw.appendChild(del);grid.appendChild(tw);
+      });
+      if(photos.length<10){
+        const addPh=div({style:{width:'76px',height:'76px',borderRadius:'10px',border:'2px dashed '+CLR.bd,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',gap:'4px',background:CLR.sf},onclick:()=>tourFileInp.click()});
+        addPh.appendChild(span({style:{fontSize:'28px'}},'📷'));
+        addPh.appendChild(span({style:{fontSize:'9px',color:CLR.t2,fontWeight:'700'}},'Foto'));
+        grid.appendChild(addPh);
+      }
+      mbody.appendChild(grid);
+      if(photos.length===0){
+        const g=div({style:{background:CLR.sf,borderRadius:'10px',padding:'10px 12px',marginBottom:'12px'}});
+        g.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.t1,marginBottom:'6px'}},'📷 Tipps für '+room.name+':'));
+        [['1.','Gesamtübersicht (vom Eingang)'],['2.','Decke & Beleuchtung'],['3.','Boden & Wände'],['4.','Fenster & Türen'],['5.','Sicherheitsausstattung']].forEach(([n,t])=>{
+          const row=div({style:{display:'flex',gap:'6px',fontSize:'10px',color:CLR.t2,marginBottom:'3px'}});
+          row.appendChild(span({style:{fontWeight:'800',color:CLR.p,width:'14px'}},n));row.appendChild(span({},t));g.appendChild(row);
+        });
+        mbody.appendChild(g);
+      }
+      const btns=div({style:{display:'flex',gap:'8px',flexWrap:'wrap'}});
+      btns.appendChild(btn('Überspringen','btn-ghost btn-sm',()=>skipRoom()));
+      if(photos.length>0){
+        if(apiKey)btns.appendChild(btn('🧠 KI-Analyse ('+photos.length+'📷)','btn-pri',()=>runRoomScan()));
+        btns.appendChild(btn('✏️ Manuell ausfüllen','btn-sec btn-sm',()=>{step='equipment';renderTourBody();}));
+      }else{
+        btns.appendChild(btn('📷 Foto aufnehmen','btn-pri',()=>tourFileInp.click()));
+        btns.appendChild(btn('✏️ Manuell','btn-ghost btn-sm',()=>{step='equipment';renderTourBody();}));
+      }
+      mbody.appendChild(btns);
+    }
+
+    function renderEquipmentForm(){
+      // ── AUSSTATTUNG ──
+      const sec=(title,children)=>{
+        const s=card({padding:'12px',marginBottom:'10px'});
+        s.appendChild(div({style:{fontSize:'11px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},title));
+        children.forEach(c=>s.appendChild(c));return s;
+      };
+      const chk=(label,key,val)=>{
+        const wrap=div({style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 0',borderBottom:'1px solid '+CLR.bd,cursor:'pointer'}});
+        const cb=h('input',{type:'checkbox'});cb.checked=eq[key];
+        cb.addEventListener('change',()=>eq[key]=cb.checked);
+        wrap.appendChild(cb);wrap.appendChild(span({style:{fontSize:'12px',color:CLR.t1}},label));
+        wrap.addEventListener('click',()=>{cb.checked=!cb.checked;eq[key]=cb.checked;});
+        return wrap;
+      };
+      const numRow=(label,key)=>{
+        const wrap=div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid '+CLR.bd}});
+        wrap.appendChild(span({style:{fontSize:'12px',color:CLR.t1}},label));
+        const inp=h('input',{type:'number',style:{width:'60px',padding:'4px 8px',borderRadius:'6px',border:'1px solid '+CLR.bd,textAlign:'center',fontSize:'12px'}});
+        inp.value=eq[key]||0;inp.addEventListener('input',()=>eq[key]=+inp.value);
+        wrap.appendChild(inp);return wrap;
+      };
+
+      if(scanResult){
+        const sr=div({style:{padding:'10px 12px',background:CLR.acc+'15',borderRadius:'10px',marginBottom:'12px',fontSize:'11px',color:CLR.t1,fontWeight:'700'}});
+        sr.textContent='✅ KI hat '+photos.length+' Fotos analysiert – bitte prüfen und ergänzen:';
+        mbody.appendChild(sr);
+      }
+
+      // Maße
+      const massG=div({cls:'g2',style:{marginBottom:'10px'}});
+      const {wrap:aW}=field('Fläche m²',eq.area,v=>eq.area=+v,{type:'number',mb:false});
+      const {wrap:hW}=field('Höhe m',eq.height_m,v=>eq.height_m=+v,{type:'number',mb:false});
+      massG.appendChild(aW);massG.appendChild(hW);mbody.appendChild(massG);
+
+      // Boden
+      mbody.appendChild(sec('🪵 Boden & Wände',[
+        field('Bodenbelag',eq.floor_type,v=>eq.floor_type=v,{options:[['','Wählen...'],['Parkett','Parkett'],['Laminat','Laminat'],['Teppich','Teppich'],['Fliesen','Fliesen'],['Beton','Beton'],['Linoleum','Linoleum'],['PVC','PVC'],['Andere','Andere']],mb:false}).wrap,
+        field('Zustand Boden',eq.floor_condition,v=>eq.floor_condition=v,{options:[['gut','✅ Gut'],['mittel','⚠️ Mittel'],['schlecht','❌ Schlecht']],mb:false}).wrap,
+        field('Deckentyp',eq.ceiling_type,v=>eq.ceiling_type=v,{options:[['','Wählen...'],['Putz','Putz'],['Akustikdecke','Akustikdecke'],['Abgehängt','Abgehängt'],['Betondecke','Betondecke'],['Andere','Andere']],mb:false}).wrap,
+        field('Zustand Wände',eq.wall_condition,v=>eq.wall_condition=v,{options:[['gut','✅ Gut'],['mittel','⚠️ Mittel'],['schlecht','❌ Schlecht']],mb:false}).wrap,
+      ]));
+
+      // Fenster & Türen
+      mbody.appendChild(sec('🪟 Fenster & Türen',[
+        numRow('Anzahl Fenster','windows'),
+        numRow('Anzahl Türen','doors'),
+        field('Fenstertyp',eq.window_type,v=>eq.window_type=v,{options:[['','Wählen...'],['Einfach','Einfachverglasung'],['Doppel','Doppelverglasung'],['Dreifach','Dreifachverglasung']],mb:false}).wrap,
+        field('Zustand Fenster',eq.window_condition,v=>eq.window_condition=v,{options:[['gut','✅ Gut'],['mittel','⚠️ Mittel'],['schlecht','❌ Schlecht']],mb:false}).wrap,
+      ]));
+
+      // Beleuchtung
+      mbody.appendChild(sec('💡 Beleuchtung',[
+        field('Leuchtmitteltyp',eq.lighting_type,v=>eq.lighting_type=v,{options:[['','Wählen...'],['LED','LED'],['Leuchtstoffröhre','Leuchtstoffröhre'],['Halogen','Halogen'],['Glühbirne','Glühbirne'],['Gemischt','Gemischt']],mb:false}).wrap,
+        numRow('Anzahl Leuchten','lighting_count'),
+        field('Zustand Beleuchtung',eq.lighting_condition,v=>eq.lighting_condition=v,{options:[['gut','✅ Gut'],['mittel','⚠️ Mittel'],['schlecht','❌ Schlecht']],mb:false}).wrap,
+      ]));
+
+      // Sicherheit
+      mbody.appendChild(sec('🚨 Sicherheit & Notfall',[
+        chk('🏃 Fluchtweg vorhanden','escape_route'),
+        chk('🪧 Fluchtweg-Beschilderung','escape_route_sign'),
+        chk('💙 Defibrillator (AED)','defi'),
+        chk('🩹 Verbandskasten','first_aid'),
+        numRow('🔴 Feuerlöscher (Anzahl)','fire_ext'),
+        numRow('🔊 Brandmelder (Anzahl)','fire_detector'),
+      ]));
+
+      const btns=div({style:{display:'flex',gap:'8px',flexWrap:'wrap',paddingBottom:'8px'}});
+      btns.appendChild(btn('← Zurück','btn-ghost btn-sm',()=>{step='capture';renderTourBody();}));
+      btns.appendChild(btn('✓ Raum speichern & weiter','btn-pri',()=>saveRoomAndNext()));
+      mbody.appendChild(btns);
+    }
+
+    async function runRoomScan(){
+      if(!apiKey)return;
+      step='scanning';renderTourBody();
+      try{
+        const prompt=`Du bist Facility Manager. Analysiere diese ${photos.length} Raum-Fotos von "${room.name}".
+Antworte NUR mit validem JSON:
+{"area_m2":Zahl_oder_null,"height_m":Zahl_oder_null,"floor_type":"Parkett|Laminat|Teppich|Fliesen|Beton|Linoleum|PVC|andere|null","floor_condition":"gut|mittel|schlecht","ceiling_type":"Putz|Akustikdecke|Abgehängt|Betondecke|andere|null","wall_condition":"gut|mittel|schlecht","windows":Zahl,"window_type":"Einfach|Doppel|Dreifach|null","window_condition":"gut|mittel|schlecht","doors":Zahl,"lighting_type":"LED|Leuchtstoffröhre|Halogen|Glühbirne|Gemischt|null","lighting_count":Zahl,"lighting_condition":"gut|mittel|schlecht","escape_route":bool,"escape_route_sign":bool,"defi":bool,"first_aid":bool,"fire_ext":Zahl,"fire_detector":Zahl,"technical_assets":[{"type":"HVAC_HEATING|PUMP|HVAC_VENT|ELEC_DIST|FIRE_PROT|VALVE|SENSOR|OTHER","name":"string","details":"string"}]}`;
+        let msgContent;
+        if(provider==='openai'){
+          msgContent=photos.map(p=>({type:'image_url',image_url:{url:p,detail:'high'}}));
+          msgContent.push({type:'text',text:prompt});
+          const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+apiKey},body:JSON.stringify({model:'gpt-4o',max_tokens:1500,messages:[{role:'user',content:msgContent}]})});
+          scanResult=JSON.parse((await r.json()).choices[0].message.content.replace(/```json?|```/g,'').trim());
+        }else{
+          msgContent=photos.map(p=>({type:'image',source:{type:'base64',media_type:'image/jpeg',data:p.replace(/^data:image\/\w+;base64,/,'')}}));
+          msgContent.push({type:'text',text:prompt});
+          const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:msgContent}]})});
+          scanResult=JSON.parse((await r.json()).content[0].text.replace(/```json?|```/g,'').trim());
+        }
+        // Merge scan into eq
+        Object.keys(eq).forEach(k=>{if(scanResult[k]!=null)eq[k]=scanResult[k];});
+        step='equipment';renderTourBody();
+      }catch(e){alert('Fehler: '+e.message);step='capture';renderTourBody();}
+    }
+
+    function saveRoomAndNext(){
+      // Save room with equipment
+      const rooms=DB.get('rooms',[]);
+      const idx2=rooms.findIndex(r=>r.id===room.id);
+      const updated={...room,equipment:eq,photos:[...photos],area:eq.area,height_m:eq.height_m,scanDone:true,scannedAt:new Date().toISOString()};
+      if(idx2>=0)rooms[idx2]=updated;else rooms.push(updated);
+      DB.set('rooms',rooms);
+      // Save detected assets
+      if(scanResult?.technical_assets?.length){
+        const assets=DB.get('assets',[]);
+        scanResult.technical_assets.forEach(a=>assets.push({id:uid(),rid:room.id,bid:bid,cat:'TECHNICAL',type:a.type,name:a.name,mfr:'',model:a.details||'',serial:'',year:null,kw:null,photos:[]}));
+        DB.set('assets',assets);
+      }
+      // Safety items from eq
+      const safetyItems=[];
+      if(eq.defi)safetyItems.push({cat:'SAFETY',type:'SAFETY',name:'Defibrillator (AED)',mfr:'',model:'',nextCheck:new Date(Date.now()+730*864e5).toISOString().slice(0,10)});
+      if(eq.first_aid)safetyItems.push({cat:'SAFETY',type:'SAFETY',name:'Verbandskasten',mfr:'',model:'',nextCheck:new Date(Date.now()+90*864e5).toISOString().slice(0,10)});
+      if(eq.fire_ext>0)safetyItems.push({cat:'SAFETY',type:'FIRE_PROT',name:'Feuerlöscher ('+eq.fire_ext+' Stk.)',mfr:'',model:'',nextCheck:new Date(Date.now()+365*864e5).toISOString().slice(0,10)});
+      if(safetyItems.length){
+        const assets=DB.get('assets',[]);
+        safetyItems.forEach(a=>assets.push({id:uid(),rid:room.id,bid:bid,...a,serial:'',year:null,kw:null,photos:[]}));
+        DB.set('assets',assets);
+      }
+      ov.remove();
+      // Next room
+      const allRooms=DB.get('rooms',[]).filter(r=>r.bid===bid&&!r.scanDone);
+      if(allRooms.length>0)startGuidedTour(allRooms);
+      else{
+        // Tour complete!
+        modal('🎉 Rundgang abgeschlossen!',(body,close)=>{
+          body.appendChild(div({style:{textAlign:'center',padding:'20px 0'}}));
+          body.lastChild.appendChild(div({style:{fontSize:'48px',marginBottom:'12px'}},'🎉'));
+          body.lastChild.appendChild(div({style:{fontSize:'16px',fontWeight:'800',color:CLR.t1,marginBottom:'6px'}},'Alle Räume erfasst!'));
+          const br2=DB.get('rooms',[]).filter(r=>r.bid===bid);
+          body.lastChild.appendChild(div({style:{fontSize:'12px',color:CLR.t2,marginBottom:'16px'}},br2.length+' Räume · '+DB.get('assets',[]).filter(a=>a.bid===bid).length+' Anlagen erfasst'));
+          const bb=div({style:{display:'flex',gap:'8px',justifyContent:'center'}});
+          bb.appendChild(btn('✓ Fertig','btn-pri',()=>{close();setTab('rooms');}));
+          body.lastChild.appendChild(bb);
+        });
+      }
+    }
+
+    function skipRoom(){
+      const rooms2=DB.get('rooms',[]);
+      const i2=rooms2.findIndex(r=>r.id===room.id);
+      if(i2>=0){rooms2[i2]={...rooms2[i2],scanDone:true,skipped:true};DB.set('rooms',rooms2);}
+      ov.remove();
+      const allRooms=DB.get('rooms',[]).filter(r=>r.bid===bid&&!r.scanDone);
+      if(allRooms.length>0)startGuidedTour(allRooms);
+      else buildTabContent();
+    }
+
+    const tourFileInp=h('input',{type:'file',accept:'image/*',multiple:'true',style:{display:'none'}});
+    tourFileInp.setAttribute('capture','environment');
+    tourFileInp.addEventListener('change',async e=>{
+      const files=[...e.target.files];
+      const b64s=await Promise.all(files.map(fileToB64));
+      photos=[...photos,...b64s].slice(0,10);e.target.value='';renderTourBody();
+    });
+    document.body.appendChild(tourFileInp);
+    // Cleanup on close
+    const origClose=()=>{tourFileInp.remove();ov.remove();buildTabContent();};
+    box.querySelector('button').addEventListener('click',origClose);
+
+    renderTourBody();
+  }
+
+  // ── ROOMS TAB ───────────────────────────────────────────────────────
+  function buildRoomsTab(){
+    const hdr=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}});
+    hdr.appendChild(div({style:{fontSize:'15px',fontWeight:'800',color:CLR.t1}},'Räume'));
+    const bh=div({style:{display:'flex',gap:'6px'}});
+    bh.appendChild(btn('🚶 Rundgang','btn-sec btn-sm',()=>setTab('overview')));
+    bh.appendChild(btn('＋','btn-ghost btn-sm',()=>showRoomForm(null)));
+    hdr.appendChild(bh);tabContent.appendChild(hdr);
+    const rooms=bRooms();
+    if(!rooms.length){
+      const e=div({cls:'empty-state'});
+      e.appendChild(div({style:{fontSize:'40px',marginBottom:'10px'}},'🚪'));
+      e.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'Noch keine Räume'));
+      e.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'16px'}},'Grundriss hochladen und Rundgang starten'));
+      e.appendChild(btn('📐 Zur Übersicht','btn-pri btn-sm',()=>setTab('overview')));
+      tabContent.appendChild(e);return;
+    }
+    const list=div({style:{display:'flex',flexDirection:'column',gap:'10px'}});
+    const condCol={'gut':CLR.ok,'mittel':CLR.wrn,'schlecht':CLR.dan,'renovierungsbedürftig':CLR.crit};
+    for(const r of rooms){
+      const ra=DB.get('assets',[]).filter(a=>a.rid===r.id);
+      const eq=r.equipment||{};
+      const c=card({overflow:'hidden',cursor:'pointer'});
+      c.addEventListener('click',()=>{state.roomDetail=r.id;render();});
+      const top=div({style:{display:'flex',gap:'12px',padding:'12px 13px 10px'}});
+      const thumb=div({style:{flexShrink:'0'}});
+      if(r.photos&&r.photos.length){
+        thumb.appendChild(img({src:r.photos[0],style:{width:'58px',height:'58px',objectFit:'cover',borderRadius:'10px'}}));
+      }else{
+        const ic=r.type==='WC'?'🚻':r.type==='CORRIDOR'?'🚶':r.type==='TECHNICAL'?'⚙️':r.type==='MEETING'?'👥':r.type==='STORAGE'?'📦':'🚪';
+        thumb.appendChild(div({style:{width:'58px',height:'58px',borderRadius:'10px',background:CLR.p+'12',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px'}},ic));
+      }
+      top.appendChild(thumb);
+      const info=div({style:{flex:'1',minWidth:'0'}});
+      info.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1}},r.name));
+      const meta=[];
+      if(r.area)meta.push('📐 '+r.area+'m²');
+      if(r.height_m)meta.push('↕ '+r.height_m+'m');
+      if(r.floor!=null)meta.push('🪜 '+r.floor+'.OG');
+      if(meta.length)info.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'2px'}},meta.join(' · ')));
+      const trow=div({style:{display:'flex',gap:'4px',marginTop:'5px',flexWrap:'wrap'}});
+      if(!r.scanDone)trow.appendChild(badge(CLR.wrn,'⏳ Nicht gescannt'));
+      else if(r.skipped)trow.appendChild(badge(CLR.t3,'⏭ Übersprungen'));
+      else trow.appendChild(badge(CLR.ok,'✅ Erfasst'));
+      if(eq.floor_type)trow.appendChild(badge(CLR.p2,eq.floor_type));
+      if(eq.defi)trow.appendChild(badge(CLR.acc,'💙 AED'));
+      if(eq.fire_ext)trow.appendChild(badge(CLR.dan,'🔴 '+eq.fire_ext+' Löscher'));
+      if(ra.length)trow.appendChild(badge(CLR.ok,'🔧 '+ra.length));
+      info.appendChild(trow);top.appendChild(info);
+      top.appendChild(div({style:{fontSize:'20px',color:CLR.t3,alignSelf:'center'}},'›'));
+      c.appendChild(top);
+      list.appendChild(c);
+    }
+    const addNew=div({style:{border:'2px dashed '+CLR.bd,borderRadius:'16px',padding:'16px',textAlign:'center',cursor:'pointer'},onclick:()=>showRoomForm(null)});
+    addNew.appendChild(div({style:{fontSize:'22px',marginBottom:'4px'}},'＋'));
+    addNew.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t2}},'Raum manuell hinzufügen'));
+    list.appendChild(addNew);tabContent.appendChild(list);
+  }
+
+  function showRoomForm(existing){
+    let r=existing?{...existing}:{id:uid(),bid:bid,name:'',type:'OFFICE',area:'',floor:0,photos:[],scanDone:false,equipment:null};
+    modal(existing?r.name:'Neuer Raum',(body,close)=>{
+      const {wrap:nw}=field('Raumname *',r.name,v=>r.name=v,{ph:'Büro 1.OG'});
+      const {wrap:tw}=field('Typ',r.type,v=>r.type=v,{options:[['OFFICE','🏢 Büro'],['TECHNICAL','⚙️ Technikraum'],['CORRIDOR','🚶 Flur'],['STORAGE','📦 Lager'],['WC','🚻 WC'],['MEETING','👥 Besprechung'],['STAIRCASE','🪜 Treppenhaus'],['OTHER','📋 Sonstiges']]});
+      const g=div({cls:'g2'});
+      const {wrap:aw}=field('Fläche m²',r.area,v=>r.area=v,{type:'number',mb:false});
+      const {wrap:fw}=field('Stockwerk',r.floor,v=>r.floor=v,{type:'number',mb:false});
+      g.appendChild(aw);g.appendChild(fw);
+      const btns=div({style:{display:'flex',gap:'8px',justifyContent:'flex-end',marginTop:'14px'}});
+      btns.appendChild(btn('Abbrechen','btn-ghost',close));
+      btns.appendChild(btn('Speichern','btn-pri btn-sm',()=>{
+        if(!r.name.trim())return;
+        r.area=r.area?+r.area:null;r.floor=r.floor!=null?+r.floor:0;
+        const rooms=DB.get('rooms',[]);
+        const i2=rooms.findIndex(x=>x.id===r.id);
+        if(i2>=0)rooms[i2]=r;else rooms.push(r);
+        DB.set('rooms',rooms);close();buildTabContent();
+      }));
+      [nw,tw,g,btns].forEach(el=>body.appendChild(el));
+    });
+  }
+
+  // ── ASSETS TAB ──────────────────────────────────────────────────────
+  function buildAssetsTab(){
+    const assets=bAssets();
+    const hdr=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}});
+    hdr.appendChild(div({style:{fontSize:'15px',fontWeight:'800',color:CLR.t1}},'Inventar'));
+    hdr.appendChild(btn('＋ Anlage','btn-pri btn-sm',()=>showAssetForm(null)));
+    tabContent.appendChild(hdr);
+
+    // Category groups
+    const cats=[['TECHNICAL','🔧 Technische Anlagen',CLR.p2],['SAFETY','🚨 Sicherheit',CLR.dan],['OTHER','📦 Sonstiges',CLR.t2]];
+    cats.forEach(([catKey,catLabel,catCol])=>{
+      const catAssets=assets.filter(a=>(a.cat||'TECHNICAL')===catKey);
+      if(!catAssets.length)return;
+      const catWrap=div({style:{marginBottom:'14px'}});
+      catWrap.appendChild(div({style:{fontSize:'11px',fontWeight:'800',color:catCol,marginBottom:'8px',display:'flex',alignItems:'center',gap:'6px'}},catLabel+' ('+catAssets.length+')'));
+      catAssets.forEach(a=>{
+        const ap=plans.filter(p=>p.aid===a.id);
+        const stKey=ap.length?ap.reduce((w,p)=>{const s=getSt(p);const o=['ok','soon','urgent','overdue','critical'];return o.indexOf(s)>o.indexOf(w)?s:w},'ok'):'ok';
+        const col=SC[stKey];
+        const c=card({overflow:'hidden',marginBottom:'8px'});
+        const top=div({style:{display:'flex',gap:'10px',padding:'10px 12px',cursor:'pointer'},onclick:()=>showAssetForm(a)});
+        const tw2=div({style:{flexShrink:'0'}});
+        if(a.photos?.length)tw2.appendChild(img({src:a.photos[0],style:{width:'48px',height:'48px',objectFit:'cover',borderRadius:'9px'}}));
+        else tw2.appendChild(div({style:{width:'48px',height:'48px',borderRadius:'9px',background:col+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'22px'}},EM[a.type]||'🏭'));
+        top.appendChild(tw2);
+        const info=div({style:{flex:'1',minWidth:'0'}});
+        info.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},a.name));
+        info.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},(a.mfr||'')+(a.model?' · '+a.model:'')));
+        const tr=div({style:{display:'flex',gap:'4px',marginTop:'4px',flexWrap:'wrap'}});
+        tr.appendChild(badge(col,ap.length+' Pläne'));
+        if(a.year)tr.appendChild(span({style:{fontSize:'9px',color:CLR.t3,fontWeight:'600'}},'Bj.'+a.year));
+        info.appendChild(tr);top.appendChild(info);
+        const del=btn('🗑️','',e=>{e.stopPropagation();if(!confirm('Löschen?'))return;DB.set('assets',DB.get('assets',[]).filter(x=>x.id!==a.id));buildTabContent();});
+        del.style.cssText='background:none;border:none;cursor:pointer;font-size:13px;color:'+CLR.t3+';padding:4px;';
+        top.appendChild(del);c.appendChild(top);catWrap.appendChild(c);
+      });
+      tabContent.appendChild(catWrap);
+    });
+    if(!assets.length){
+      const e=div({cls:'empty-state'});
+      e.appendChild(div({style:{fontSize:'40px',marginBottom:'10px'}},'🔧'));
+      e.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'Noch keine Anlagen'));
+      e.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'14px'}},'Rundgang starten oder manuell hinzufügen'));
+      e.appendChild(btn('＋ Anlage hinzufügen','btn-pri btn-sm',()=>showAssetForm(null)));
+      tabContent.appendChild(e);
+    }
+  }
+
+  function showAssetForm(existing){
+    const rooms=bRooms();
+    const cats=[['TECHNICAL','🔧 Technische Anlage'],['SAFETY','🚨 Sicherheit'],['OTHER','📦 Sonstiges']];
+    let a=existing?{...existing}:{id:uid(),bid:bid,rid:rooms[0]?.id||'',cat:'TECHNICAL',type:'OTHER',name:'',mfr:'',model:'',serial:'',year:'',kw:'',photos:[]};
+    let photos=[...(a.photos||[])];
+    modal(existing?a.name:'Neue Anlage',(body,close)=>{
+      const phSec=div({style:{marginBottom:'14px'}});
+      phSec.appendChild(h('label',{cls:'fl'},'📷 Fotos'));
+      const phWrap=div({});phSec.appendChild(phWrap);
+      photoPicker(phWrap,photos,v=>{photos=[...v];},8);
+      body.appendChild(phSec);
+      if(rooms.length){const {wrap:rw}=field('Raum',a.rid,v=>a.rid=v,{options:[['','Kein Raum'],...rooms.map(r=>[r.id,r.name])]});body.appendChild(rw);}
+      const g0=div({cls:'g2',style:{marginBottom:'13px'}});
+      const {wrap:caw}=field('Kategorie',a.cat||'TECHNICAL',v=>a.cat=v,{options:cats,mb:false});
+      const {wrap:tw}=field('Typ',a.type,v=>a.type=v,{options:Object.entries(TL).map(([v,l])=>[v,EM[v]+' '+l]),mb:false});
+      g0.appendChild(caw);g0.appendChild(tw);body.appendChild(g0);
+      const g1=div({cls:'g2',style:{marginBottom:'13px'}});
+      const {wrap:nw}=field('Name *',a.name,v=>a.name=v,{ph:'Heizkessel Vitodens',mb:false});
+      const {wrap:mw}=field('Hersteller',a.mfr,v=>a.mfr=v,{ph:'Viessmann',mb:false});
+      g1.appendChild(nw);g1.appendChild(mw);body.appendChild(g1);
+      const g2=div({cls:'g3',style:{marginBottom:'13px'}});
+      const {wrap:mdw}=field('Modell',a.model,v=>a.model=v,{mb:false});
+      const {wrap:yw}=field('Baujahr',a.year,v=>a.year=v,{type:'number',mb:false});
+      const {wrap:sw}=field('SN',a.serial,v=>a.serial=v,{mb:false});
+      g2.appendChild(mdw);g2.appendChild(yw);g2.appendChild(sw);body.appendChild(g2);
+      const btns=div({style:{display:'flex',gap:'8px',justifyContent:'flex-end'}});
+      btns.appendChild(btn('Abbrechen','btn-ghost',close));
+      btns.appendChild(btn('💾 Speichern','btn-pri btn-sm',()=>{
+        if(!a.name.trim())return;
+        a.photos=photos;a.year=a.year?+a.year:null;
+        const cur=DB.get('assets',[]);
+        const i2=cur.findIndex(x=>x.id===a.id);
+        if(i2>=0)cur[i2]=a;else cur.push(a);
+        DB.set('assets',cur);close();buildTabContent();
+      }));
+      body.appendChild(btns);
+    });
+  }
+
+  // ── WARTUNG TAB ─────────────────────────────────────────────────────
+  function buildPlansTab(){
+    const assets=bAssets();
+    const bPlans=plans.filter(p=>assets.some(a=>a.id===p.aid));
+    tabContent.appendChild(div({style:{fontSize:'15px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'Wartungspläne ('+bPlans.length+')'));
+    if(!bPlans.length){
+      const e=div({cls:'empty-state'});
+      e.appendChild(div({style:{fontSize:'40px',marginBottom:'10px'}},'📋'));
+      e.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1}},'Keine Wartungspläne'));
+      e.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginTop:'4px'}},'Anlagen per KI-Scan erfassen'));
+      tabContent.appendChild(e);return;
+    }
+    const sorted=bPlans.sort((a2,b2)=>new Date(a2.due)-new Date(b2.due));
+    sorted.forEach(p=>{
+      const s=getSt(p),col=SC[s],d=Math.floor((new Date(p.due)-Date.now())/864e5);
+      const a=assets.find(x=>x.id===p.aid);
+      const row=card({padding:'11px 13px',display:'flex',gap:'9px',alignItems:'center',marginBottom:'8px'});
+      row.appendChild(div({style:{width:'3px',alignSelf:'stretch',borderRadius:'2px',background:col,flexShrink:'0'}}));
+      row.appendChild(div({style:{width:'34px',height:'34px',borderRadius:'8px',background:col+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px',flexShrink:'0'}},EM[a?.type]||'🔧'));
+      const info=div({style:{flex:'1',minWidth:'0'}});
+      const tr2=div({style:{display:'flex',alignItems:'center',gap:'4px'}});
+      tr2.appendChild(div({style:{fontSize:'11px',fontWeight:'700',color:CLR.t1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.title));
+      if(p.legal)tr2.appendChild(badge(CLR.dan,'§'));
+      info.appendChild(tr2);
+      info.appendChild(div({style:{fontSize:'9px',color:CLR.t2}},(a?.name||'')+' · '+p.norm));
+      info.appendChild(div({style:{marginTop:'3px'}}));
+      info.lastChild.appendChild(badge(col,daysLabel(p.due)));
+      row.appendChild(info);tabContent.appendChild(row);
+    });
+  }
+
+  buildTabBar();buildTabContent();
+  return root;
+}
+
+// ── ROOM DETAIL ─────────────────────────────────────────────────────────
+function pageRoomDetail(bid,rid){
+  const r=DB.get('rooms',[]).find(x=>x.id===rid);
+  if(!r){state.roomDetail=null;return pageBuildingDetail(bid);}
+  const plans=DB.get('plans',[]);
+  const rAssets=DB.get('assets',[]).filter(a=>a.rid===rid);
+  const eq=r.equipment||{};
+  const condCol={'gut':CLR.ok,'mittel':CLR.wrn,'schlecht':CLR.dan,'renovierungsbedürftig':CLR.crit};
+
+  const root=div({cls:'page'});
+  const hero=div({style:{background:`linear-gradient(135deg,${CLR.p},${CLR.p2})`,padding:'14px 16px 18px'}});
+  const back=btn('← Zurück','btn-sm',()=>{state.roomDetail=null;state.bldTab='rooms';render();});
+  back.style.cssText='background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;display:inline-flex;align-items:center;font-family:inherit';
+  hero.appendChild(back);
+  hero.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:'#fff',marginBottom:'2px'}},r.name||'Raum'));
+  const meta=[];
+  if(r.area)meta.push('📐 '+r.area+'m²');
+  if(r.height_m)meta.push('↕ '+r.height_m+'m');
+  if(r.floor!=null)meta.push('🪜 '+r.floor+'.OG');
+  hero.appendChild(div({style:{fontSize:'11px',color:'rgba(255,255,255,.5)'}},meta.join(' · ')||'Keine Maße'));
+  const stRow=div({style:{display:'flex',gap:'6px',marginTop:'8px',flexWrap:'wrap'}});
+  if(!r.scanDone)stRow.appendChild(badge(CLR.wrn,'⏳ Nicht gescannt'));
+  else if(r.skipped)stRow.appendChild(badge(CLR.t3,'⏭ Übersprungen'));
+  else stRow.appendChild(badge(CLR.ok,'✅ Vollständig erfasst'));
+  if(eq.overall_condition){const cc=condCol[eq.overall_condition]||CLR.t2;stRow.appendChild(badge(cc,eq.overall_condition));}
+  hero.appendChild(stRow);root.appendChild(hero);
+
+  const wrap=div({style:{padding:'14px'}});
+
+  // Photos
+  if(r.photos&&r.photos.length){
+    const ps=card({padding:'12px',marginBottom:'12px'});
+    ps.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'8px'}},'📷 Fotos ('+r.photos.length+')'));
+    const pg=div({style:{display:'flex',gap:'8px',flexWrap:'wrap'}});
+    r.photos.forEach(p=>pg.appendChild(img({src:p,style:{width:'72px',height:'72px',objectFit:'cover',borderRadius:'8px'}})));
+    ps.appendChild(pg);wrap.appendChild(ps);
+  }
+
+  // Ausstattung
+  const equipCard=card({padding:'14px',marginBottom:'12px'});
+  equipCard.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'🏠 Ausstattung'));
+  const rows=[
+    eq.floor_type&&['🪵 Boden',eq.floor_type+(eq.floor_condition?' ('+eq.floor_condition+')':'')],
+    eq.ceiling_type&&['🏔 Decke',eq.ceiling_type+(eq.ceiling_condition?' ('+eq.ceiling_condition+')':'')],
+    eq.wall_condition&&['🧱 Wände','Zustand: '+eq.wall_condition],
+    eq.windows!=null&&['🪟 Fenster',eq.windows+' Stk.'+(eq.window_type?' · '+eq.window_type:'')+(eq.window_condition?' · '+eq.window_condition:'')],
+    eq.doors!=null&&['🚪 Türen',eq.doors+' Stk.'],
+    eq.lighting_type&&['💡 Beleuchtung',eq.lighting_type+(eq.lighting_count?' · '+eq.lighting_count+' Stk.':'')+(eq.lighting_condition?' · '+eq.lighting_condition:'')],
+  ].filter(Boolean);
+  if(rows.length){
+    rows.forEach(([k,v])=>{
+      const row=div({style:{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid '+CLR.bd,fontSize:'11px'}});
+      row.appendChild(span({style:{color:CLR.t2,fontWeight:'600'}},k));
+      row.appendChild(span({style:{color:CLR.t1,fontWeight:'700',textAlign:'right',maxWidth:'55%'}},v));
+      equipCard.appendChild(row);
+    });
+  }else{
+    equipCard.appendChild(div({style:{fontSize:'11px',color:CLR.t2,textAlign:'center',padding:'8px'}},'Kein Scan – keine Ausstattungsdaten'));
+  }
+  wrap.appendChild(equipCard);
+
+  // Sicherheit
+  const secItems=[];
+  if(eq.escape_route)secItems.push(['🏃','Fluchtweg vorhanden',CLR.ok]);
+  if(eq.escape_route_sign)secItems.push(['🪧','Fluchtweg-Beschilderung',CLR.ok]);
+  if(eq.defi)secItems.push(['💙','Defibrillator (AED)',CLR.acc]);
+  if(eq.first_aid)secItems.push(['🩹','Verbandskasten',CLR.ok]);
+  if(eq.fire_ext)secItems.push(['🔴','Feuerlöscher: '+eq.fire_ext+' Stk.',CLR.dan]);
+  if(eq.fire_detector)secItems.push(['🔊','Brandmelder: '+eq.fire_detector+' Stk.',CLR.dan]);
+  if(secItems.length){
+    const sc=card({padding:'14px',marginBottom:'12px'});
+    sc.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'🚨 Sicherheit'));
+    secItems.forEach(([ic,label,col])=>{
+      const row=div({style:{display:'flex',alignItems:'center',gap:'8px',padding:'6px 0',borderBottom:'1px solid '+CLR.bd}});
+      row.appendChild(span({style:{fontSize:'16px'}},ic));
+      row.appendChild(span({style:{fontSize:'11px',color:CLR.t1,fontWeight:'600',flex:'1'}},label));
+      row.appendChild(badge(col,'✓'));
+      sc.appendChild(row);
+    });
+    wrap.appendChild(sc);
+  }
+
+  // Inventar by category
+  const cats=[['TECHNICAL','🔧 Technische Anlagen',CLR.p2],['SAFETY','🚨 Sicherheit',CLR.dan],['OTHER','📦 Sonstiges',CLR.t2]];
+  cats.forEach(([catKey,catLabel,catCol])=>{
+    const ca=rAssets.filter(a=>(a.cat||'TECHNICAL')===catKey);
+    if(!ca.length)return;
+    const ic=card({padding:'14px',marginBottom:'12px'});
+    ic.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:catCol,marginBottom:'10px'}},catLabel+' ('+ca.length+')'));
+    ca.forEach(a=>{
+      const ap=plans.filter(p=>p.aid===a.id);
+      const stKey=ap.length?ap.reduce((w,p)=>{const s=getSt(p);const o=['ok','soon','urgent','overdue','critical'];return o.indexOf(s)>o.indexOf(w)?s:w},'ok'):'ok';
+      const col=SC[stKey];
+      const ar=div({style:{display:'flex',gap:'10px',alignItems:'center',padding:'7px 0',borderBottom:'1px solid '+CLR.bd}});
+      ar.appendChild(div({style:{width:'32px',height:'32px',borderRadius:'8px',background:col+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'15px',flexShrink:'0'}},EM[a.type]||'🏭'));
+      const ai=div({style:{flex:'1'}});
+      ai.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1}},a.name));
+      if(a.mfr||a.model)ai.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},(a.mfr||'')+(a.model?' · '+a.model:'')));
+      ar.appendChild(ai);
+      ar.appendChild(badge(col,ap.length+' Pläne'));
+      ic.appendChild(ar);
+    });
+    wrap.appendChild(ic);
+  });
+  if(!rAssets.length){
+    const ec=card({padding:'14px',marginBottom:'12px'});
+    ec.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'6px'}},'🔧 Inventar'));
+    ec.appendChild(div({style:{fontSize:'11px',color:CLR.t2,textAlign:'center',padding:'8px'}},'Keine Anlagen in diesem Raum'));
+    wrap.appendChild(ec);
+  }
+
+  if(r.scannedAt){
+    wrap.appendChild(div({style:{fontSize:'10px',color:CLR.t3,textAlign:'center',marginBottom:'12px'}},'KI-Scan: '+new Date(r.scannedAt).toLocaleDateString('de-DE')));
+  }
+  const delBtn=btn('🗑️ Raum löschen','btn-sec',()=>{
+    if(!confirm('Raum löschen?'))return;
+    DB.set('rooms',DB.get('rooms',[]).filter(x=>x.id!==rid));
+    state.roomDetail=null;state.bldTab='rooms';render();
+  });
+  delBtn.style.cssText+='width:100%;justify-content:center;border-radius:12px;padding:12px;';
+  wrap.appendChild(delBtn);
+  root.appendChild(wrap);
+  return root;
+}
+
+
+// ── MAINTENANCE ────────────────────────────────────────────────────────
+function pageMaintenance(){
+  const root=div({cls:'page'});
+  let plans=DB.get('plans',[]);
+  const assets=DB.get('assets',[]);
+  let filt='all';
+
+  const sticky=div({style:{background:'#fff',borderBottom:'1px solid '+CLR.bd,padding:'14px 14px 0',position:'sticky',top:'0',zIndex:'10'}});
+  const hrow=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}});
+  hrow.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:CLR.t1}},'Wartungsplan'));
+  hrow.appendChild(btn('＋ Plan','btn-pri btn-sm',()=>showPlanForm(null)));
+  sticky.appendChild(hrow);
+  const fbar=div({cls:'fbar',style:{paddingBottom:'12px'}});
+  sticky.appendChild(fbar);root.appendChild(sticky);
+
+  const sumBar=div({style:{background:`linear-gradient(120deg,${CLR.p},${CLR.p2})`,margin:'14px 14px 10px',borderRadius:'14px',padding:'13px 14px',display:'flex'}});
+  root.appendChild(sumBar);
+  const listWrap=div({style:{padding:'0 14px',display:'flex',flexDirection:'column',gap:'8px'}});
+  root.appendChild(listWrap);
+
+  function refresh(){plans=DB.get('plans',[]);buildTabs();buildSum();buildList();}
+
+  function buildTabs(){
+    fbar.innerHTML='';
+    const sum=plans.reduce((a,p)=>{const s=getSt(p);a[s]=(a[s]||0)+1;return a},{});
+    const act=(sum.critical||0)+(sum.overdue||0)+(sum.urgent||0);
+    const tabs=[['all','Alle ('+plans.length+')'],['action','⚡ Aktion ('+act+')'],['critical','🟣 Kritisch'],['overdue','🔴 Überfällig'],['urgent','🟠 Dringend'],['soon','🟡 Bald'],['ok','✅ OK'],['legal','⚖ Gesetzlich']];
+    for(const[k,l]of tabs){
+      const b=h('button',{cls:'fchip',onclick:()=>{filt=k;buildTabs();buildList();}},l);
+      b.style.background=filt===k?CLR.p:CLR.sf;b.style.color=filt===k?'#fff':CLR.t2;
+      fbar.appendChild(b);
+    }
+  }
+
+  function buildSum(){
+    sumBar.innerHTML='';
+    const sum=plans.reduce((a,p)=>{const s=getSt(p);a[s]=(a[s]||0)+1;return a},{});
+    [['critical','#FF8A8A','Kritisch'],['overdue','#FFB347','Überfällig'],['urgent','#FFD966','Dringend'],['ok','#7EDB9E','OK']].forEach(([k,col,l])=>{
+      const c=div({style:{flex:'1',textAlign:'center'}});
+      c.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:col,lineHeight:'1'}},sum[k]||0));
+      c.appendChild(div({style:{fontSize:'9px',color:'rgba(255,255,255,.45)',fontWeight:'700',textTransform:'uppercase',marginTop:'2px'}},l));
+      sumBar.appendChild(c);
+    });
+  }
+
+  function buildList(){
+    listWrap.innerHTML='';
+    const filtered=plans.filter(p=>{
+      const s=getSt(p);
+      if(filt==='all')return true;
+      if(filt==='action')return['critical','overdue','urgent'].includes(s);
+      if(filt==='legal')return p.legal;
+      return s===filt;
+    }).sort((a,b)=>new Date(a.due)-new Date(b.due));
+
+    if(!filtered.length){
+      const e=card({padding:'40px',textAlign:'center'});
+      e.appendChild(div({style:{fontSize:'36px',marginBottom:'10px'}},'✅'));
+      e.appendChild(div({style:{fontSize:'14px',fontWeight:'700',color:CLR.t1}},'Keine Einträge'));
+      listWrap.appendChild(e);
+    }
+    for(const p of filtered){
+      const s=getSt(p),col=SC[s],d=Math.floor((new Date(p.due)-Date.now())/864e5);
+      const a=assets.find(x=>x.id===p.aid);
+      const row=card({padding:'12px 13px',display:'flex',gap:'9px',alignItems:'center',marginBottom:'2px'});
+      row.appendChild(div({style:{width:'3px',alignSelf:'stretch',borderRadius:'2px',background:col,flexShrink:'0'}}));
+      const thumb=a?.photos?.[0]?img({src:a.photos[0],style:{width:'36px',height:'36px',objectFit:'cover',borderRadius:'9px',flexShrink:'0'}}):div({style:{width:'36px',height:'36px',borderRadius:'9px',background:col+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:'0'}},EM[a?.type]||'🔧');
+      row.appendChild(thumb);
+      const info=div({style:{flex:'1',minWidth:'0',cursor:'pointer'},onclick:()=>showPlanDetail(p)});
+      const titleRow=div({style:{display:'flex',alignItems:'center',gap:'5px'}});
+      titleRow.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.title));
+      if(p.legal)titleRow.appendChild(badge(CLR.dan,'§'));
+      info.appendChild(titleRow);
+      info.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'1px'}},(a?.name||'Unbekannte Anlage')+' · '+p.norm));
+      const brow=div({style:{marginTop:'4px',display:'flex',gap:'4px',flexWrap:'wrap'}});
+      brow.appendChild(badge(col,d<0?Math.abs(d)+' T überfällig':d===0?'Heute!':'in '+d+' T'));
+      if(p.who)brow.appendChild(badge(CLR.t3,p.who.slice(0,15)));
+      info.appendChild(brow);
+      row.appendChild(info);
+      // Action buttons
+      const acts=div({style:{display:'flex',gap:'4px',flexShrink:'0'}});
+      const chk=btn('✓','',()=>showRecord(p));
+      chk.style.cssText='background:'+CLR.ok+'22;border:1px solid '+CLR.ok+'44;border-radius:8px;cursor:pointer;padding:7px 10px;font-size:14px;flex-shrink:0;color:'+CLR.ok;
+      const edit=btn('✏️','',()=>showPlanForm(p));
+      edit.style.cssText='background:'+CLR.sf+';border:1px solid '+CLR.bd+';border-radius:8px;cursor:pointer;padding:7px 8px;font-size:12px;flex-shrink:0';
+      acts.appendChild(chk);acts.appendChild(edit);
+      row.appendChild(acts);
+      listWrap.appendChild(row);
+    }
+    listWrap.appendChild(div({style:{height:'20px'}}));
+  }
+
+  function showPlanDetail(p){
+    const a=assets.find(x=>x.id===p.aid);
+    const records=DB.get('records',[]).filter(r=>r.planId===p.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const s=getSt(p),col=SC[s];
+    modal('Wartungsplan-Details',(body,close)=>{
+      // Header info
+      const hc=card({padding:'12px',marginBottom:'14px'});
+      hc.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'4px'}},p.title));
+      hc.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},p.norm+(p.legal?' · ⚖ Gesetzlich':'')));
+      const dg=div({cls:'g3',style:{marginTop:'10px'}});
+      [[daysLabel(p.due),'Fällig'],[p.days+' Tage','Intervall'],[p.who||'–','Zuständig']].forEach(([v,l])=>{
+        const dc=div({style:{background:CLR.sf,borderRadius:'8px',padding:'8px',textAlign:'center'}});
+        dc.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.p,wordBreak:'break-word'}},v));
+        dc.appendChild(div({style:{fontSize:'8px',color:CLR.t2,fontWeight:'600',marginTop:'1px'}},l));
+        dg.appendChild(dc);
+      });
+      hc.appendChild(dg);body.appendChild(hc);
+      // History
+      body.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'8px'}},'📋 Wartungshistorie ('+records.length+')'));
+      if(records.length){
+        records.slice(0,5).forEach(r=>{
+          const rc=div({style:{display:'flex',gap:'8px',padding:'8px 10px',background:CLR.sf,borderRadius:'8px',marginBottom:'6px',alignItems:'center'}});
+          rc.appendChild(div({style:{fontSize:'16px'}},r.result==='OK'?'✅':r.result==='DEFECT'?'⚠️':'🔶'));
+          const ri=div({style:{flex:'1'}});
+          ri.appendChild(div({style:{fontSize:'11px',fontWeight:'700',color:CLR.t1}},r.performer));
+          ri.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},new Date(r.date).toLocaleDateString('de-DE')+(r.notes?' · '+r.notes:'')));
+          rc.appendChild(ri);body.appendChild(rc);
+        });
+      }else{
+        body.appendChild(div({style:{fontSize:'11px',color:CLR.t2,textAlign:'center',padding:'12px'}},'Noch keine Wartungen durchgeführt'));
+      }
+      const btns=div({style:{display:'flex',gap:'8px',marginTop:'14px'}});
+      btns.appendChild(btn('✏️ Bearbeiten','btn-ghost btn-sm',()=>{close();showPlanForm(p);}));
+      btns.appendChild(btn('🗑️ Löschen','btn-ghost btn-sm',()=>{if(!confirm('Plan löschen?'))return;DB.set('plans',DB.get('plans',[]).filter(x=>x.id!==p.id));close();refresh();}));
+      btns.appendChild(btn('✓ Abschließen','btn-pri btn-sm',()=>{close();showRecord(p);}));
+      body.appendChild(btns);
+    });
+  }
+
+  function showPlanForm(existing){
+    const allAssets=DB.get('assets',[]);
+    let p=existing?{...existing}:{id:uid(),aid:'',title:'',norm:'',days:365,legal:false,due:new Date().toISOString().slice(0,10),who:''};
+    modal(existing?'Plan bearbeiten':'Neuer Wartungsplan',(body,close)=>{
+      if(allAssets.length){
+        const{wrap:aw}=field('Anlage *',p.aid,v=>p.aid=v,{options:[['','Anlage wählen...'],...allAssets.map(a=>[a.id,a.name])]});
+        body.appendChild(aw);
+      }else{
+        body.appendChild(div({style:{padding:'10px',background:CLR.wrn+'22',borderRadius:'8px',fontSize:'11px',color:CLR.wrn,marginBottom:'13px'}},'⚠️ Zuerst Anlagen anlegen'));
+      }
+      const{wrap:tw}=field('Bezeichnung *',p.title,v=>p.title=v,{ph:'Jahreswartung Heizkessel'});
+      const{wrap:nw}=field('Norm / Vorschrift',p.norm,v=>p.norm=v,{ph:'DIN EN 12599, DGUV V3...'});
+      const g=div({cls:'g2'});
+      const{wrap:dw}=field('Intervall (Tage)',p.days,v=>p.days=+v,{type:'number',mb:false});
+      const{wrap:duew}=field('Nächste Fälligkeit',p.due,v=>p.due=v,{type:'date',mb:false});
+      g.appendChild(dw);g.appendChild(duew);
+      const{wrap:ww}=field('Zuständig',p.who,v=>p.who=v,{ph:'Fachbetrieb / Name'});
+      // Legal checkbox
+      const lrow=div({style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'13px',cursor:'pointer'}});
+      const lcb=h('input',{type:'checkbox'});lcb.checked=p.legal;
+      lcb.addEventListener('change',()=>p.legal=lcb.checked);
+      lrow.appendChild(lcb);
+      lrow.appendChild(span({style:{fontSize:'12px',color:CLR.t1}},'⚖ Gesetzlich vorgeschriebene Prüfung'));
+      lrow.addEventListener('click',()=>{lcb.checked=!lcb.checked;p.legal=lcb.checked;});
+      const btns=div({style:{display:'flex',gap:'8px',justifyContent:'flex-end'}});
+      btns.appendChild(btn('Abbrechen','btn-ghost',close));
+      btns.appendChild(btn('💾 Speichern','btn-pri btn-sm',()=>{
+        if(!p.title.trim())return;
+        const cur=DB.get('plans',[]);
+        const idx=cur.findIndex(x=>x.id===p.id);
+        if(idx>=0)cur[idx]=p;else cur.push(p);
+        DB.set('plans',cur);close();refresh();
+      }));
+      [tw,nw,g,ww,lrow,btns].forEach(el=>body.appendChild(el));
+    });
+  }
+
+  function showRecord(p){
+    let rec={performer:'',result:'OK',notes:''};
+    modal('Wartung abschließen',(body,close)=>{
+      const info=card({padding:'12px',marginBottom:'14px'});
+      info.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1}},p.title));
+      info.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginTop:'2px'}},p.norm+' · '+(p.who||'')));
+      body.appendChild(info);
+      const{wrap:pw}=field('Durchgeführt von *',rec.performer,v=>rec.performer=v,{ph:'Name / Firma'});
+      const{wrap:rw}=field('Ergebnis',rec.result,v=>rec.result=v,{options:[['OK','✅ Keine Mängel'],['DEFECT','⚠️ Mangel festgestellt'],['PARTIAL','🔶 Teilweise erledigt']]});
+      const{wrap:datew}=field('Datum',new Date().toISOString().slice(0,10),v=>rec.date=v,{type:'date'});
+      const{wrap:nw}=field('Notizen',rec.notes,v=>rec.notes=v,{textarea:true,ph:'Befunde, Maßnahmen...'});
+      const btns=div({style:{display:'flex',gap:'8px',justifyContent:'flex-end'}});
+      btns.appendChild(btn('Abbrechen','btn-ghost',close));
+      btns.appendChild(btn('✓ Speichern','btn-pri btn-sm',()=>{
+        if(!rec.performer.trim())return;
+        const recs=[...DB.get('records',[]),{id:uid(),planId:p.id,...rec,date:rec.date||new Date().toISOString()}];
+        DB.set('records',recs);
+        const u=DB.get('plans',[]).map(x=>x.id!==p.id?x:{...x,done:new Date().toISOString().slice(0,10),due:new Date(Date.now()+x.days*864e5).toISOString().slice(0,10)});
+        DB.set('plans',u);close();refresh();
+      }));
+      [pw,rw,datew,nw,btns].forEach(el=>body.appendChild(el));
+    });
+  }
+
+  refresh();
+  return root;
+}
+
+// ── KI SCAN ────────────────────────────────────────────────────────────
+function pageScan(){
+  const root=div({cls:'page',style:{padding:'0 0 16px'}});
+  const apiKey=DB.get('apiKey','');
+  const provider=DB.get('provider','claude');
+  let mode='photo';
+  let scanPhoto=null;
+  let textInput='';
+  let result=null;
+  let isLoading=false;
+
+  const sticky=div({style:{background:'#fff',borderBottom:'1px solid '+CLR.bd,padding:'14px',position:'sticky',top:'0',zIndex:'10'}});
+  sticky.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'KI-Scan'));
+  const modeBar=div({style:{display:'flex',background:CLR.sf,borderRadius:'10px',padding:'3px',marginBottom:'0'}});
+  const mBtns={};
+  [['photo','📷 Foto'],['text','✏️ Text']].forEach(([k,l])=>{
+    const b=h('button',{cls:'btn',style:{flex:'1',padding:'8px',fontSize:'12px',borderRadius:'8px',transition:'all .2s'},onclick:()=>{mode=k;updateMode();}},'');
+    b.textContent=l;mBtns[k]=b;modeBar.appendChild(b);
+  });
+  sticky.appendChild(modeBar);root.appendChild(sticky);
+
+  const body=div({style:{padding:'14px'}});
+  root.appendChild(body);
+
+  function updateMode(){
+    Object.entries(mBtns).forEach(([k,b])=>{
+      b.style.background=mode===k?'#fff':'transparent';
+      b.style.boxShadow=mode===k?'0 1px 4px rgba(0,0,0,.1)':'none';
+      b.style.color=mode===k?CLR.p:CLR.t2;
+      b.style.fontWeight=mode===k?'700':'600';
+    });
+    build();
+  }
+
+  function build(){
+    body.innerHTML='';
+    if(!apiKey){
+      const w=div({style:{padding:'12px 14px',background:CLR.wrn+'22',border:'1px solid '+CLR.wrn+'44',borderRadius:'12px',marginBottom:'14px'}});
+      w.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.wrn,marginBottom:'2px'}},'⚠️ Kein API-Key'));
+      w.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'Bitte in Einstellungen einen API-Key eintragen'));
+      const gb=btn('⚙️ Zu Einstellungen','btn-ghost btn-sm',()=>navigate('settings'));gb.style.marginTop='8px';
+      w.appendChild(gb);body.appendChild(w);
+    }
+    if(mode==='photo') buildPhotoMode();
+    else buildTextMode();
+  }
+
+  let fileInp=null;
+  function buildPhotoMode(){
+    if(!fileInp){
+      fileInp=h('input',{type:'file',accept:'image/*',style:{display:'none'}});
+      fileInp.setAttribute('capture','environment');
+      fileInp.addEventListener('change',async e=>{
+        const f=e.target.files[0];if(!f)return;
+        scanPhoto=await fileToB64(f);e.target.value='';result=null;build();
+      });
+      document.body.appendChild(fileInp);
+    }
+
+    if(scanPhoto){
+      const ph=div({style:{position:'relative',marginBottom:'14px'}});
+      ph.appendChild(img({src:scanPhoto,style:{width:'100%',maxHeight:'240px',objectFit:'contain',borderRadius:'14px',border:'1px solid '+CLR.bd}}));
+      const del=div({style:{position:'absolute',top:'8px',right:'8px',background:'rgba(0,0,0,.5)',color:'#fff',borderRadius:'50%',width:'28px',height:'28px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:'14px'},onclick:()=>{scanPhoto=null;result=null;build();}});
+      del.textContent='×';ph.appendChild(del);body.appendChild(ph);
+    }else{
+      const dropZone=div({style:{border:'2px dashed '+CLR.bd,borderRadius:'16px',padding:'32px 16px',textAlign:'center',cursor:'pointer',background:CLR.sf,marginBottom:'14px'},onclick:()=>fileInp.click()});
+      dropZone.appendChild(div({style:{fontSize:'48px',marginBottom:'12px'}},'📷'));
+      dropZone.appendChild(div({style:{fontSize:'14px',fontWeight:'700',color:CLR.t1,marginBottom:'6px'}},'Foto aufnehmen oder hochladen'));
+      dropZone.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'Typenschild · Anlage · Ausstattung'));
+      body.appendChild(dropZone);
+    }
+
+    if(result) buildResult();
+    else if(scanPhoto && !isLoading){
+      const btns=div({style:{display:'flex',gap:'8px',marginBottom:'14px'}});
+      btns.appendChild(btn('🔄 Anderes Foto','btn-ghost',()=>fileInp.click()));
+      btns.appendChild(btn('🧠 KI analysieren','btn-pri',()=>runScan()));
+      body.appendChild(btns);
+    } else if(isLoading){
+      const s=div({style:{textAlign:'center',padding:'24px'}});
+      const sp=div({style:{fontSize:'36px',display:'inline-block',animation:'spin 1s linear infinite',marginBottom:'8px'}});sp.textContent='⟳';
+      s.appendChild(sp);s.appendChild(div({style:{fontSize:'12px',color:CLR.t2,fontWeight:'700'}},'Analysiere Bild…'));
+      body.appendChild(s);
+    }
+  }
+
+  function buildTextMode(){
+    const{wrap:tw,inp:ti}=field('Anlage beschreiben',textInput,v=>textInput=v,{textarea:true,ph:'z.B. Grundfos Umwälzpumpe UPS 25-60, Baujahr 2018',mb:false});
+    body.appendChild(tw);
+    if(result) buildResult();
+    else{
+      const sb=btn('🧠 Analysieren','btn-pri',()=>{if(textInput.trim())runScan();});
+      sb.style.cssText+='width:100%;margin-top:12px;justify-content:center;padding:13px;border-radius:12px;';
+      body.appendChild(sb);
+    }
+  }
+
+  async function runScan(){
+    if(!apiKey){alert('API-Key fehlt');return;}
+    isLoading=true;result=null;build();
+    try{
+      const raw=await callAI(mode==='photo'?scanPhoto:textInput,apiKey,provider,mode==='photo');
+      result=JSON.parse(raw.replace(/```json?|```/g,'').trim());
+      isLoading=false;build();
+    }catch(e){isLoading=false;alert('Fehler: '+e.message);build();}
+  }
+
+  function buildResult(){
+    if(!result)return;
+    const rc=card({padding:'14px',marginBottom:'12px'});
+    const rh=div({style:{display:'flex',gap:'12px',alignItems:'flex-start',marginBottom:'12px'}});
+    rh.appendChild(div({style:{width:'44px',height:'44px',borderRadius:'11px',background:CLR.p+'15',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'24px',flexShrink:'0'}},EM[result.assetType]||'🏭'));
+    const ri=div({});
+    ri.appendChild(div({style:{fontSize:'16px',fontWeight:'800',color:CLR.t1}},result.name||'Anlage'));
+    ri.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginTop:'2px'}},TL[result.assetType]||result.assetType));
+    ri.appendChild(div({style:{marginTop:'4px'}}));
+    ri.lastChild.appendChild(badge(result.confidence>70?CLR.ok:CLR.wrn,result.confidence+'% Konfidenz'));
+    rh.appendChild(ri);rc.appendChild(rh);
+    const drows=[
+      result.manufacturer&&['🏭 Hersteller',result.manufacturer],
+      result.model&&['📦 Modell',result.model],
+      result.serial&&['🔢 Seriennr.',result.serial],
+      result.year&&['📅 Baujahr',result.year],
+      result.powerKw&&['⚡ Leistung',result.powerKw+' kW'],
+      result.ocrText&&['📝 OCR',result.ocrText.slice(0,60)+(result.ocrText.length>60?'…':'')],
+    ].filter(Boolean);
+    drows.forEach(([k,v])=>{
+      const row=div({style:{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid '+CLR.bd,fontSize:'11px'}});
+      row.appendChild(span({style:{color:CLR.t2,fontWeight:'600'}},k));
+      row.appendChild(span({style:{color:CLR.t1,fontWeight:'700',textAlign:'right',maxWidth:'55%',wordBreak:'break-all'}},v));
+      rc.appendChild(row);
+    });
+    if(result.notes){rc.appendChild(div({style:{marginTop:'8px',padding:'8px',background:CLR.sf,borderRadius:'8px',fontSize:'11px',color:CLR.t2}},result.notes));}
+    body.appendChild(rc);
+
+    // Maintenance rules
+    if(result.maintenanceRules?.length){
+      const mc=card({padding:'14px',marginBottom:'12px'});
+      mc.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'📋 Wartungsempfehlungen ('+result.maintenanceRules.length+')'));
+      result.maintenanceRules.forEach(r=>{
+        const mr=div({style:{padding:'8px 0',borderBottom:'1px solid '+CLR.bd}});
+        const mh=div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'2px'}});
+        mh.appendChild(span({style:{fontSize:'11px',fontWeight:'700',color:CLR.t1}},r.title));
+        if(r.isLegal)mh.appendChild(badge(CLR.dan,'§ Pflicht'));
+        mr.appendChild(mh);
+        mr.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},r.norm+' · alle '+r.intervalDays+' Tage · '+r.responsible));
+        mc.appendChild(mr);
+      });
+      body.appendChild(mc);
+    }
+
+    // Save buttons
+    const rooms=DB.get('rooms',[]);
+    const buildings=DB.get('buildings',[]);
+    const saveCard=card({padding:'14px',marginBottom:'12px'});
+    saveCard.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1,marginBottom:'10px'}},'💾 Anlage speichern'));
+    let selBid=buildings[0]?.id||'',selRid='';
+    if(buildings.length){
+      const{wrap:bw}=field('Gebäude',selBid,v=>{selBid=v;},{options:[['','Kein Gebäude'],...buildings.map(b=>[b.id,b.name])]});
+      saveCard.appendChild(bw);
+    }
+    if(rooms.length){
+      const{wrap:rw}=field('Raum',selRid,v=>{selRid=v;},{options:[['','Kein Raum'],...rooms.filter(r=>!selBid||r.bid===selBid).map(r=>[r.id,r.name])]});
+      saveCard.appendChild(rw);
+    }
+    const sbtns=div({style:{display:'flex',gap:'8px',marginTop:'4px'}});
+    sbtns.appendChild(btn('🔄 Neu scannen','btn-ghost',()=>{result=null;scanPhoto=null;textInput='';build();}));
+    sbtns.appendChild(btn('💾 Speichern','btn-pri btn-sm',()=>{
+      const newAsset={id:uid(),bid:selBid,rid:selRid,cat:'TECHNICAL',type:result.assetType||'OTHER',name:result.name||'Neue Anlage',mfr:result.manufacturer||'',model:result.model||'',serial:result.serial||'',year:result.year||null,kw:result.powerKw||null,photos:scanPhoto?[scanPhoto]:[]};
+      const assets2=[...DB.get('assets',[]),newAsset];DB.set('assets',assets2);
+      if(result.maintenanceRules?.length){
+        const plans2=[...DB.get('plans',[]),...result.maintenanceRules.map(r=>({id:uid(),aid:newAsset.id,title:r.title,norm:r.norm,days:r.intervalDays,legal:r.isLegal,due:new Date(Date.now()+r.intervalDays*864e5).toISOString().slice(0,10),who:r.responsible}))];
+        DB.set('plans',plans2);
+      }
+      alert('✅ Gespeichert!');result=null;scanPhoto=null;textInput='';build();
+    }));
+    saveCard.appendChild(sbtns);body.appendChild(saveCard);
+  }
+
+  updateMode();
+  return root;
+}
+
+// ── SETTINGS ───────────────────────────────────────────────────────────
+function pageSettings(){
+  const root=div({cls:'page',style:{padding:'16px 16px 0'}});
+  root.appendChild(div({style:{fontSize:'20px',fontWeight:'800',color:CLR.t1,marginBottom:'16px'}},'Einstellungen'));
+
+  // Profile card
+  const blds=DB.get('buildings',[]),rooms=DB.get('rooms',[]),assets=DB.get('assets',[]),plans=DB.get('plans',[]);
+  const prof=card({padding:'16px',marginBottom:'12px',background:`linear-gradient(120deg,${CLR.p},${CLR.p2})`});
+  const pr=div({style:{display:'flex',alignItems:'center',gap:'14px'}});
+  pr.appendChild(div({style:{width:'50px',height:'50px',borderRadius:'50%',background:'rgba(255,255,255,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'26px'}},'👤'));
+  const pi=div({});
+  pi.appendChild(div({style:{fontSize:'14px',fontWeight:'800',color:'#fff'}},'Facility Manager'));
+  pi.appendChild(div({style:{fontSize:'11px',color:'rgba(255,255,255,.45)',marginTop:'2px'}},'FacilityMind v0.9 · PWA · Offline-First'));
+  pi.appendChild(span({style:{background:'rgba(255,255,255,.15)',color:'rgba(255,255,255,.8)',fontSize:'10px',fontWeight:'700',padding:'2px 8px',borderRadius:'50px',display:'inline-block',marginTop:'5px'}},'🔑 Admin'));
+  pr.appendChild(pi);prof.appendChild(pr);root.appendChild(prof);
+
+  // API
+  const apiCard=card({padding:'16px',marginBottom:'12px'});
+  apiCard.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'🧠 KI-Anbieter & API-Key'));
+  const provs=[{id:'claude',icon:'🟣',name:'Claude',sub:'Anthropic · Vision + OCR',ph:'sk-ant-api03-...',link:'https://console.anthropic.com'},{id:'openai',icon:'🟢',name:'GPT-4o',sub:'OpenAI · Vision + OCR',ph:'sk-proj-...',link:'https://platform.openai.com/api-keys'}];
+  const curProv=DB.get('provider','claude');
+  const provGrid=div({cls:'g2',style:{marginBottom:'16px'}});
+  for(const p of provs){
+    const active=curProv===p.id;
+    const pc=div({style:{padding:'12px 10px',borderRadius:'12px',border:'2px solid '+(active?CLR.p2:CLR.bd),background:active?CLR.p+'08':CLR.sf,cursor:'pointer',textAlign:'center'},onclick:()=>{DB.set('provider',p.id);DB.set('apiKey','');render();}});
+    pc.appendChild(div({style:{fontSize:'22px',marginBottom:'5px'}},p.icon));
+    pc.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:active?CLR.p:CLR.t1}},p.name));
+    pc.appendChild(div({style:{fontSize:'10px',color:CLR.t2,marginTop:'2px'}},p.sub));
+    if(active){const ab=div({style:{marginTop:'6px'}});ab.appendChild(badge(CLR.ok,'Aktiv'));pc.appendChild(ab);}
+    provGrid.appendChild(pc);
+  }
+  apiCard.appendChild(provGrid);
+  const cur=provs.find(p=>p.id===curProv)||provs[0];
+  const keyLbl=div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t2,marginBottom:'8px',display:'flex',alignItems:'center',gap:'6px'}});
+  keyLbl.appendChild(span({},cur.icon+' API-Key für '+cur.name));
+  if(DB.get('apiKey'))keyLbl.appendChild(badge(CLR.ok,'✓ Gesetzt'));
+  apiCard.appendChild(keyLbl);
+  let showKey=false;
+  const keyWrap=div({style:{position:'relative',marginBottom:'10px'}});
+  const keyInp=h('input',{type:'password',placeholder:cur.ph});
+  keyInp.style.cssText+='padding-right:42px;font-family:monospace;font-size:12px;';
+  keyInp.value=DB.get('apiKey','')||'';
+  const eyeBtn=h('button',{style:{position:'absolute',right:'10px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:'16px',padding:'4px'},onclick:()=>{showKey=!showKey;keyInp.type=showKey?'text':'password';eyeBtn.textContent=showKey?'🙈':'👁';}},'👁');
+  keyWrap.appendChild(keyInp);keyWrap.appendChild(eyeBtn);apiCard.appendChild(keyWrap);
+  const tst=div({style:{marginBottom:'10px',display:'none'}});apiCard.appendChild(tst);
+  const kBtns=div({style:{display:'flex',gap:'8px'}});
+  const testBtn=btn('Testen','btn-ghost btn-sm',async()=>{
+    if(!keyInp.value)return;
+    testBtn.textContent='…';testBtn.disabled=true;
+    try{
+      await callAI('Antworte mit OK',keyInp.value,curProv,false);
+      tst.style.cssText='display:block;background:'+CLR.ok+'22;color:'+CLR.ok+';padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:8px';tst.textContent='✅ Verbindung erfolgreich!';
+    }catch(e){
+      tst.style.cssText='display:block;background:'+CLR.dan+'22;color:'+CLR.dan+';padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:8px';tst.textContent='❌ '+e.message;
+    }
+    testBtn.textContent='Testen';testBtn.disabled=false;
+  });
+  const saveBtn=btn('Speichern','btn-pri btn-sm',()=>{DB.set('apiKey',keyInp.value);saveBtn.textContent='✓ OK';setTimeout(()=>saveBtn.textContent='Speichern',2000);});
+  kBtns.appendChild(testBtn);kBtns.appendChild(saveBtn);apiCard.appendChild(kBtns);
+  root.appendChild(apiCard);
+
+  // Stats
+  const statsCard=card({padding:'16px',marginBottom:'12px'});
+  statsCard.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'📊 Gespeicherte Daten'));
+  const sg=div({cls:'g3'});
+  const totalPhotos=[...assets,...rooms].reduce((s,x)=>s+(x.photos?.length||0),0);
+  [[blds.length,'Gebäude'],[rooms.length,'Räume'],[assets.length,'Anlagen'],[plans.length,'Wartungspläne'],[DB.get('records',[]).length,'Protokolle'],[totalPhotos,'Fotos']].forEach(([v,l])=>{
+    const sc=div({style:{background:CLR.sf,borderRadius:'10px',padding:'10px 12px',textAlign:'center'}});
+    sc.appendChild(div({style:{fontSize:'16px',fontWeight:'800',color:CLR.p}},v));
+    sc.appendChild(div({style:{fontSize:'9px',color:CLR.t2,fontWeight:'600'}},l));
+    sg.appendChild(sc);
+  });
+  statsCard.appendChild(sg);
+  root.appendChild(statsCard);
+
+  // Data management
+  const dmCard=card({padding:'16px',marginBottom:'12px'});
+  dmCard.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'💾 Datenverwaltung'));
+
+  // Backup Export
+  const expBtn=btn('📤 Backup exportieren','btn-sec',()=>{
+    const data={version:'0.9',exported:new Date().toISOString(),buildings:DB.get('buildings',[]),rooms:DB.get('rooms',[]),assets:DB.get('assets',[]),plans:DB.get('plans',[]),records:DB.get('records',[])};
+    const json=JSON.stringify(data,null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a2=document.createElement('a');
+    a2.href=url;a2.download='FacilityMind_Backup_'+new Date().toISOString().slice(0,10)+'.json';
+    a2.click();URL.revokeObjectURL(url);
+  });
+  expBtn.style.cssText+='width:100%;justify-content:center;padding:12px;border-radius:12px;margin-bottom:8px;';
+  dmCard.appendChild(expBtn);
+
+  // Backup Import
+  const impWrap=div({style:{marginBottom:'8px'}});
+  const impInp=h('input',{type:'file',accept:'.json',style:{display:'none'}});
+  impInp.addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    const fr=new FileReader();
+    fr.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!data.buildings)throw new Error('Ungültige Backup-Datei');
+        if(!confirm('Backup importieren? Aktuelle Daten werden ÜBERSCHRIEBEN!'))return;
+        DB.set('buildings',data.buildings||[]);
+        DB.set('rooms',data.rooms||[]);
+        DB.set('assets',data.assets||[]);
+        DB.set('plans',data.plans||[]);
+        DB.set('records',data.records||[]);
+        DB.set('seeded',1);
+        alert('✅ Backup erfolgreich importiert!');render();
+      }catch(err){alert('Fehler: '+err.message);}
+    };
+    fr.readAsText(f);e.target.value='';
+  });
+  const impBtn=btn('📥 Backup importieren','btn-ghost',()=>impInp.click());
+  impBtn.style.cssText+='width:100%;justify-content:center;padding:12px;border-radius:12px;';
+  impWrap.appendChild(impInp);impWrap.appendChild(impBtn);dmCard.appendChild(impWrap);
+  root.appendChild(dmCard);
+
+  // PDF Report Export
+  const pdfCard=card({padding:'16px',marginBottom:'12px'});
+  pdfCard.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'6px'}},'📄 Bericht exportieren'));
+  pdfCard.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'12px'}},'Wartungsübersicht als druckbares HTML'));
+  const pdfBtn=btn('📄 Bericht erstellen','btn-sec',()=>generateReport());
+  pdfBtn.style.cssText+='width:100%;justify-content:center;padding:12px;border-radius:12px;';
+  pdfCard.appendChild(pdfBtn);
+  root.appendChild(pdfCard);
+
+  // Privacy
+  const priv=card({padding:'16px',marginBottom:'12px'});
+  priv.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'🔒 Datenschutz'));
+  [['Speicherort','Nur auf diesem Gerät'],['Cloud','Kein Server – 100% offline'],['DSGVO','Konform'],['KI-Anfragen','Nur bei aktivem Scan'],['Fotos','Lokal im Browser']].forEach(([k,v])=>{
+    const row=div({style:{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:'1px solid '+CLR.bd,fontSize:'12px'}});
+    row.appendChild(span({style:{color:CLR.t2,fontWeight:'600'}},k));
+    row.appendChild(span({style:{color:CLR.t1,fontWeight:'700'}},v));
+    priv.appendChild(row);
+  });
+  root.appendChild(priv);
+
+  // Install hint
+  if(!window.matchMedia('(display-mode: standalone)').matches){
+    const inst=card({padding:'14px',marginBottom:'12px',background:CLR.acc+'12',border:'1px solid '+CLR.acc+'44'});
+    inst.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.acc,marginBottom:'6px'}},'📲 Als App installieren'));
+    [['1.','Safari öffnen'],['2.','Teilen-Button tippen (□↑)'],['3.','"Zum Home-Bildschirm" wählen']].forEach(([n,t])=>{
+      const row=div({style:{display:'flex',gap:'8px',fontSize:'11px',color:CLR.t1,marginBottom:'4px'}});
+      row.appendChild(span({style:{fontWeight:'800',color:CLR.acc,width:'14px'}},n));
+      row.appendChild(span({},t));inst.appendChild(row);
+    });
+    root.appendChild(inst);
+  }
+
+  // Reset buttons
+  const dangerCard=card({padding:'16px',marginBottom:'16px',border:'1px solid '+CLR.dan+'33'});
+  dangerCard.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.dan,marginBottom:'12px'}},'⚠️ Gefahrenzone'));
+  const resetDemo=btn('🔄 Demo-Daten laden','btn-ghost',()=>{
+    if(!confirm('Demo-Daten laden? Aktuelle Daten bleiben erhalten wenn du danach nicht löschst.'))return;
+    DB.del('seeded');seed();render();
+  });
+  resetDemo.style.cssText+='width:100%;justify-content:center;padding:11px;border-radius:10px;margin-bottom:8px;border-color:'+CLR.wrn+';color:'+CLR.wrn+';';
+  const clearAll=btn('🗑️ Alle Daten löschen','btn-danger',()=>{
+    if(!confirm('ALLE Daten unwiderruflich löschen?'))return;
+    if(!confirm('Wirklich? Diese Aktion kann nicht rückgängig gemacht werden!'))return;
+    Object.keys(localStorage).filter(k=>k.startsWith('fm2_')).forEach(k=>localStorage.removeItem(k));
+    render();
+  });
+  clearAll.style.cssText+='width:100%;justify-content:center;padding:11px;border-radius:10px;';
+  dangerCard.appendChild(resetDemo);dangerCard.appendChild(clearAll);
+  root.appendChild(dangerCard);
+
+  return root;
+}
+
+// ── PDF REPORT ──────────────────────────────────────────────────────────
+function generateReport(){
+  const buildings=DB.get('buildings',[]);
+  const rooms=DB.get('rooms',[]);
+  const assets=DB.get('assets',[]);
+  const plans=DB.get('plans',[]);
+  const records=DB.get('records',[]);
+  const now=new Date().toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const statusColors={'ok':'#27AE60','soon':'#F39C12','urgent':'#E67E22','overdue':'#E74C3C','critical':'#8E44AD'};
+  const statusLabels={'ok':'OK','soon':'Bald fällig','urgent':'Dringend','overdue':'Überfällig','critical':'Kritisch §'};
+
+  let html=`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>FacilityMind Wartungsbericht</title>
+<style>
+body{font-family:Arial,sans-serif;font-size:12px;color:#333;margin:0;padding:20px}
+h1{color:#0F2942;font-size:20px;border-bottom:2px solid #0F2942;padding-bottom:8px}
+h2{color:#1A4F7A;font-size:15px;margin-top:24px;border-bottom:1px solid #ddd;padding-bottom:4px}
+h3{color:#333;font-size:13px;margin-top:16px;margin-bottom:4px}
+.meta{color:#666;font-size:11px;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{background:#0F2942;color:#fff;padding:6px 8px;text-align:left;font-size:11px}
+td{padding:6px 8px;border-bottom:1px solid #eee;font-size:11px}
+tr:nth-child(even){background:#f9f9f9}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff}
+.ok{background:#27AE60}.soon{background:#F39C12}.urgent{background:#E67E22}.overdue{background:#E74C3C}.critical{background:#8E44AD}
+.legal{background:#E74C3C}
+@media print{body{padding:0} .no-print{display:none}}
+</style></head><body>
+<h1>🏭 FacilityMind – Wartungsbericht</h1>
+<div class="meta">Erstellt am ${now} · ${buildings.length} Gebäude · ${assets.length} Anlagen · ${plans.length} Wartungspläne</div>`;
+
+  // Summary table
+  const sum=plans.reduce((a,p)=>{const s=getSt(p);a[s]=(a[s]||0)+1;return a},{});
+  html+=`<h2>📊 Zusammenfassung</h2><table><tr><th>Status</th><th>Anzahl</th></tr>`;
+  ['critical','overdue','urgent','soon','ok'].forEach(s=>{
+    if(sum[s])html+=`<tr><td><span class="badge ${s}">${statusLabels[s]}</span></td><td>${sum[s]}</td></tr>`;
+  });
+  html+=`</table>`;
+
+  // Per building
+  buildings.forEach(b=>{
+    const bRooms=rooms.filter(r=>r.bid===b.id);
+    const bAssets=assets.filter(a=>a.bid===b.id);
+    const bPlans=plans.filter(p=>bAssets.some(a=>a.id===p.aid));
+    html+=`<h2>🏢 ${b.name}</h2><div class="meta">${b.address} · ${b.city} · Bj. ${b.year||'–'} · ${b.area||'–'}m²</div>`;
+    html+=`<p><strong>Räume:</strong> ${bRooms.length} · <strong>Anlagen:</strong> ${bAssets.length} · <strong>Wartungspläne:</strong> ${bPlans.length}</p>`;
+
+    if(bPlans.length){
+      html+=`<h3>Wartungspläne</h3><table><tr><th>Bezeichnung</th><th>Anlage</th><th>Norm</th><th>Fällig</th><th>Status</th><th>Zuständig</th></tr>`;
+      bPlans.sort((a2,b2)=>new Date(a2.due)-new Date(b2.due)).forEach(p=>{
+        const a=bAssets.find(x=>x.id===p.aid);
+        const s=getSt(p);
+        const d=Math.floor((new Date(p.due)-Date.now())/864e5);
+        const dLabel=d<0?Math.abs(d)+' T überfällig':d===0?'Heute':'in '+d+' T';
+        html+=`<tr><td>${p.title}${p.legal?' <span class="badge legal">§</span>':''}</td><td>${a?.name||'–'}</td><td>${p.norm}</td><td>${new Date(p.due).toLocaleDateString('de-DE')} (${dLabel})</td><td><span class="badge ${s}">${statusLabels[s]}</span></td><td>${p.who||'–'}</td></tr>`;
+      });
+      html+=`</table>`;
+    }
+  });
+
+  // Recent records
+  if(records.length){
+    html+=`<h2>📋 Letzte Wartungsprotokolle</h2><table><tr><th>Datum</th><th>Wartung</th><th>Durchgeführt von</th><th>Ergebnis</th><th>Notizen</th></tr>`;
+    records.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,20).forEach(r=>{
+      const p=plans.find(x=>x.id===r.planId);
+      const icon=r.result==='OK'?'✅':r.result==='DEFECT'?'⚠️':'🔶';
+      html+=`<tr><td>${new Date(r.date).toLocaleDateString('de-DE')}</td><td>${p?.title||'–'}</td><td>${r.performer}</td><td>${icon} ${r.result}</td><td>${r.notes||'–'}</td></tr>`;
+    });
+    html+=`</table>`;
+  }
+
+  html+=`<div style="margin-top:30px;padding-top:10px;border-top:1px solid #ddd;color:#999;font-size:10px">Generiert von FacilityMind AI · ${now}</div></body></html>`;
+
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a2=document.createElement('a');
+  a2.href=url;a2.download='FacilityMind_Bericht_'+new Date().toISOString().slice(0,10)+'.html';
+  a2.click();URL.revokeObjectURL(url);
+}
+
+// ── NAV ────────────────────────────────────────────────────────────────
+function renderNav(){
+  const nav=document.getElementById('nav');
+  nav.innerHTML='';
+  const plans=DB.get('plans',[]);
+  const critBadge=plans.filter(p=>getSt(p)==='critical').length;
+  const items=[['dashboard','🏠','Home',false,0],['buildings','🏢','Gebäude',false,0],['scan','📷','Scan',true,0],['maintenance','🔧','Wartung',false,critBadge],['settings','⚙️','Mehr',false,0]];
+  for(const[k,e,l,fab,bdg]of items){
+    const item=div({cls:'nav-item',onclick:()=>navigate(k,{bldDetail:null})});
+    if(fab){
+      const f=div({cls:'nav-fab'});
+      f.appendChild(span({style:{fontSize:'20px'}},e));
+      f.appendChild(span({style:{fontSize:'7px',color:'#fff',fontWeight:'800',letterSpacing:'.5px'}},'SCAN'));
+      item.appendChild(f);
+    }else{
+      const dot=div({cls:'nav-dot',style:{width:state.page===k?'26px':'0px'}});
+      item.appendChild(dot);
+      const wrap=div({style:{position:'relative'}});
+      wrap.appendChild(span({style:{fontSize:'20px',filter:state.page===k?'none':'grayscale(1) opacity(.4)'}},e));
+      if(bdg>0){
+        const b=div({style:{position:'absolute',top:'-4px',right:'-4px',width:'14px',height:'14px',background:CLR.dan,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'9px',fontWeight:'800',color:'#fff'}},bdg);
+        wrap.appendChild(b);
+      }
+      item.appendChild(wrap);
+      item.appendChild(span({style:{fontSize:'9px',fontWeight:state.page===k?'800':'600',color:state.page===k?CLR.p:CLR.t3}},l));
+    }
+    nav.appendChild(item);
+  }
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────
+let _lastPage=null;
+function render(){
+  // Cleanup previous page
+  if(_lastPage?._cleanup)_lastPage._cleanup();
+  const scroll=document.getElementById('scroll');
+  scroll.innerHTML='';
+  const pages={dashboard:pageDashboard,buildings:pageBuildings,scan:pageScan,maintenance:pageMaintenance,settings:pageSettings};
+  const page=(pages[state.page]||pageDashboard)();
+  _lastPage=page;
+  scroll.appendChild(page);
+  scroll.scrollTop=0;
+  renderNav();
+}
+
+// ── SERVICE WORKER (inline) ─────────────────────────────────────────────
+function registerSW(){
+  if(!('serviceWorker' in navigator))return;
+  const sw=`
+self.addEventListener('install',e=>self.skipWaiting());
+self.addEventListener('activate',e=>clients.claim());
+self.addEventListener('fetch',e=>{
+  if(e.request.url.includes('api.anthropic.com')||e.request.url.includes('openai.com')){
+    e.respondWith(fetch(e.request));return;
+  }
+  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));
+});`;
+  const blob=new Blob([sw],{type:'application/javascript'});
+  const url=URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url).catch(()=>{});
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────
+seed();
+registerSW();
+render();
+</script>
+</body>
+</html>
