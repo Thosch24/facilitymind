@@ -1030,61 +1030,104 @@ function pageBuildingDetail(bid){
   function startFloorplanScan(){
     const apiKey=DB.get('apiKey',''),provider=DB.get('provider','claude');
     if(!apiKey){alert('Bitte API-Key in Einstellungen eintragen');return;}
+    const floorplans=b.floorplans||{};
+    const fpEntries=Object.entries(floorplans); // [{floor, imgSrc}]
+    if(!fpEntries.length&&b.floorplan)fpEntries.push(['EG',b.floorplan]);
+    const fpForScan=fpEntries.length>0;
+    if(!fpForScan){alert('Bitte zuerst Grundrisse hochladen');return;}
+
     const ov=div({cls:'overlay'});
     const box=div({cls:'modal'});
     box.appendChild(div({cls:'modal-handle'}));
     const mhdr=div({cls:'modal-hdr'});
-    mhdr.appendChild(h('strong',{style:{fontSize:'15px',color:CLR.t1}},'🏗️ Grundriss analysieren'));
+    mhdr.appendChild(h('strong',{style:{fontSize:'15px',color:CLR.t1}},'🏗️ Alle Stockwerke analysieren'));
     mhdr.appendChild(h('button',{style:{fontSize:'24px',color:CLR.t2,background:'none',border:'none',cursor:'pointer',padding:'0 4px'},onclick:()=>ov.remove()},'×'));
     box.appendChild(mhdr);
     const mbody=div({cls:'modal-body'});
     box.appendChild(mbody);ov.appendChild(box);document.body.appendChild(ov);
 
-    const spin=div({style:{textAlign:'center',padding:'30px 20px'}});
-    const sp=div({style:{fontSize:'48px',display:'inline-block',animation:'spin 1s linear infinite',marginBottom:'16px'}});sp.textContent='⟳';
-    spin.appendChild(sp);
-    spin.appendChild(div({style:{fontSize:'14px',fontWeight:'700',color:CLR.t1,marginBottom:'6px'}},'KI analysiert Grundriss…'));
-    spin.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'Räume werden automatisch erkannt'));
-    mbody.appendChild(spin);
+    // Analyse each floor sequentially
+    async function analyseAllFloors(){
+      const allRooms=[];
+      for(let i=0;i<fpEntries.length;i++){
+        const [floorLabel,fpSrc]=fpEntries[i];
+        // Show progress
+        mbody.innerHTML='';
+        const spin=div({style:{textAlign:'center',padding:'24px 20px'}});
+        const sp=div({style:{fontSize:'40px',display:'inline-block',animation:'spin 1s linear infinite',marginBottom:'12px'}});sp.textContent='⟳';
+        spin.appendChild(sp);
+        spin.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'4px'}},'Analysiere Stockwerk '+floorLabel+'…'));
+        spin.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'12px'}},(i+1)+' von '+fpEntries.length+' Grundrissen'));
+        // Progress bar
+        const ptrack=div({style:{height:'4px',background:CLR.bg4,borderRadius:'2px',overflow:'hidden',margin:'0 auto',maxWidth:'200px'}});
+        const pfill=div({style:{width:((i/fpEntries.length)*100)+'%',height:'100%',background:CLR.p,borderRadius:'2px',transition:'width .3s'}});
+        ptrack.appendChild(pfill);spin.appendChild(ptrack);
+        mbody.appendChild(spin);
 
-    const prompt=`Du bist Facility Manager. Analysiere diesen Gebäudegrundriss.
-Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
-{"rooms":[{"name":"Raumname","type":"OFFICE|TECHNICAL|CORRIDOR|STORAGE|WC|MEETING|STAIRCASE|OTHER","area_m2":Zahl_oder_null,"floor":Zahl_oder_0,"notes":"string"}],"floors":Anzahl_Stockwerke,"total_area_m2":Zahl_oder_null}`;
+        const prompt=`Du bist Facility Manager. Analysiere diesen Gebäudegrundriss für Stockwerk "${floorLabel}".
+Erkenne ALLE Räume auf diesem Stockwerk. Antworte NUR mit JSON (kein Markdown, keine Erklärung):
+{"rooms":[{"name":"Raumname auf Deutsch","type":"OFFICE|TECHNICAL|CORRIDOR|STORAGE|WC|MEETING|STAIRCASE|OTHER","area_m2":Zahl_oder_null,"notes":"kurze Notiz"}],"total_area_m2":Zahl_oder_null}`;
 
-    const fpForAI=(b.floorplans&&Object.values(b.floorplans)[0])||b.floorplan;const imgData=fpForAI.replace(/^data:image\/[\w+]+;base64,/,'');
-    const msgContent=provider==='openai'
-      ?[{type:'image_url',image_url:{url:fpForAI,detail:'high'}},{type:'text',text:prompt}]
-      :[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:imgData}},{type:'text',text:prompt}];
+        try{
+          const imgData=fpSrc.replace(/^data:image\/[\w+]+;base64,/,'');
+          const mediaType=fpSrc.startsWith('data:image/png')?'image/png':'image/jpeg';
+          const msgContent=provider==='openai'
+            ?[{type:'image_url',image_url:{url:fpSrc,detail:'high'}},{type:'text',text:prompt}]
+            :[{type:'image',source:{type:'base64',media_type:mediaType,data:imgData}},{type:'text',text:prompt}];
+          const raw=await(provider==='openai'
+            ?fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+apiKey},body:JSON.stringify({model:'gpt-4o',max_tokens:2000,messages:[{role:'user',content:msgContent}]})}).then(r=>r.json()).then(d=>d.choices[0].message.content)
+            :fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:msgContent}]})}).then(r=>r.json()).then(d=>d.content[0].text));
+          const result=JSON.parse(raw.replace(/```json?|```/g,'').trim());
+          // Tag each room with floor label
+          (result.rooms||[]).forEach(r=>{r.floorLabel=floorLabel;r.floor=i;});
+          allRooms.push(...(result.rooms||[]));
+        }catch(e){
+          // Show error for this floor but continue
+          allRooms.push({name:'[Fehler: '+floorLabel+']',type:'OTHER',area_m2:null,floorLabel,floor:i,notes:'Analyse fehlgeschlagen: '+e.message});
+        }
+      }
+      return allRooms;
+    }
 
-    const fetchProm=provider==='openai'
-      ?fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+apiKey},body:JSON.stringify({model:'gpt-4o',max_tokens:2000,messages:[{role:'user',content:msgContent}]})}).then(r=>r.json()).then(d=>d.choices[0].message.content)
-      :fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:msgContent}]})}).then(r=>r.json()).then(d=>d.content[0].text);
-
-    fetchProm.then(raw=>{
-      const result=JSON.parse(raw.replace(/```json?|```/g,'').trim());
+    analyseAllFloors().then(allRooms=>{
       mbody.innerHTML='';
-      mbody.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'4px'}},result.rooms.length+' Räume erkannt'));
-      mbody.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'14px'}},'Werden als Vorlage für den Rundgang gespeichert'));
-      const rl=div({style:{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'16px',maxHeight:'300px',overflowY:'auto'}});
-      result.rooms.forEach(r=>{
-        const rc=div({style:{display:'flex',gap:'8px',padding:'8px 10px',background:CLR.bg4,borderRadius:'10px',alignItems:'center'}});
-        rc.appendChild(span({style:{fontSize:'18px'}},r.type==='WC'?'🚻':r.type==='CORRIDOR'?'🚶':r.type==='TECHNICAL'?'⚙️':r.type==='MEETING'?'👥':r.type==='STORAGE'?'📦':'🚪'));
-        const ri=div({style:{flex:'1'}});
-        ri.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1}},r.name));
-        if(r.area_m2)ri.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},r.area_m2+'m² · '+r.type));
-        rc.appendChild(ri);rl.appendChild(rc);
+      // Group by floor for display
+      const byFloor={};
+      allRooms.forEach(r=>{if(!byFloor[r.floorLabel])byFloor[r.floorLabel]=[];byFloor[r.floorLabel].push(r);});
+      mbody.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'2px'}},allRooms.length+' Räume in '+Object.keys(byFloor).length+' Stockwerk(en) erkannt'));
+      mbody.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'14px'}},'Bitte prüfen und übernehmen'));
+
+      const rl=div({style:{maxHeight:'340px',overflowY:'auto',marginBottom:'16px'}});
+      Object.entries(byFloor).forEach(([fl,rooms])=>{
+        // Floor header
+        const flHdr=div({style:{fontSize:'11px',fontWeight:'800',color:CLR.p,padding:'8px 4px 4px',textTransform:'uppercase',letterSpacing:'.5px'}});
+        flHdr.textContent='📐 '+fl+' · '+rooms.length+' Räume';
+        rl.appendChild(flHdr);
+        rooms.forEach(r=>{
+          const rc=div({style:{display:'flex',gap:'8px',padding:'7px 10px',background:CLR.bg4,borderRadius:'10px',alignItems:'center',marginBottom:'4px'}});
+          rc.appendChild(span({style:{fontSize:'16px'}},r.type==='WC'?'🚻':r.type==='CORRIDOR'?'🚶':r.type==='TECHNICAL'?'⚙️':r.type==='MEETING'?'👥':r.type==='STORAGE'?'📦':r.type==='STAIRCASE'?'🪜':'🚪'));
+          const ri=div({style:{flex:'1'}});
+          ri.appendChild(div({style:{fontSize:'12px',fontWeight:'700',color:CLR.t1}},r.name));
+          const sub=[];if(r.area_m2)sub.push(r.area_m2+'m²');sub.push(r.type);
+          ri.appendChild(div({style:{fontSize:'10px',color:CLR.t2}},sub.join(' · ')));
+          rc.appendChild(ri);rl.appendChild(rc);
+        });
       });
       mbody.appendChild(rl);
+
       const fbtns=div({style:{display:'flex',gap:'8px'}});
-      fbtns.appendChild(btn('Abbrechen','btn-ghost',()=>ov.remove()));
-      fbtns.appendChild(btn('✓ Räume übernehmen & Rundgang starten','btn-pri',()=>{
+      fbtns.appendChild(btn('Abbrechen','btn-ghost btn-sm',()=>ov.remove()));
+      fbtns.appendChild(btn('✓ Alle übernehmen & Rundgang','btn-pri btn-sm',()=>{
         const existRooms=DB.get('rooms',[]).filter(r=>r.bid!==bid);
-        const newRooms=result.rooms.map(r=>({id:uid(),bid:bid,name:r.name,type:r.type,area:r.area_m2,floor:r.floor||0,height_m:null,equipment:null,photos:[],scanDone:false,notes:r.notes}));
+        const newRooms=allRooms.map(r=>({id:uid(),bid:bid,name:r.name,type:r.type,area:r.area_m2,floor:r.floor||0,floorLabel:r.floorLabel||'EG',height_m:null,equipment:null,photos:[],scanDone:false,notes:r.notes||''}));
         DB.set('rooms',[...existRooms,...newRooms]);
         ov.remove();startGuidedTour(newRooms);
       }));
       mbody.appendChild(fbtns);
-    }).catch(e=>{mbody.innerHTML='';mbody.appendChild(div({style:{padding:'20px',color:CLR.dan,fontWeight:'700',textAlign:'center'}},'Fehler: '+e.message));});
+    }).catch(e=>{
+      mbody.innerHTML='';
+      mbody.appendChild(div({style:{padding:'20px',color:CLR.dan,fontWeight:'700',textAlign:'center'}},'Fehler: '+e.message));
+    });
   }
 
   // ── GEFÜHRTER RUNDGANG ──────────────────────────────────────────────
@@ -1153,7 +1196,28 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
     let _fpImg=null;
     let _pin=null;
     const _pinKey='fp_pin_'+bid+'_'+room.id;
-    let _pinPos=JSON.parse(localStorage.getItem(_pinKey)||'null')||{x:50,y:50};
+    // Auto-distribute pins if no saved position: spread rooms across floorplan
+    function autoPin(roomIdx,total){
+      // Simple grid distribution: rows of 4 across the plan
+      const cols=Math.min(4,total);
+      const col=roomIdx%cols;
+      const row=Math.floor(roomIdx/cols);
+      const totalRows=Math.ceil(total/cols);
+      // Keep pins in middle 60% of plan (avoid edges)
+      const x=20+(col/(Math.max(cols-1,1)))*60;
+      const y=20+(row/(Math.max(totalRows-1,1)))*60;
+      return {x:parseFloat(x.toFixed(1)),y:parseFloat(y.toFixed(1))};
+    }
+    const savedPin=localStorage.getItem(_pinKey);
+    let _pinPos=savedPin?JSON.parse(savedPin):autoPin(idx,total);
+
+    // Floor-aware floorplan: use room's floorLabel first
+    const roomFloor=room.floorLabel||selectedFloor||'EG';
+    let _fpRot=parseInt(localStorage.getItem('fp_rot_'+bid)||'0');
+    const fpSrc=(b.floorplans&&b.floorplans[roomFloor])
+      ||(selectedFloor&&b.floorplans&&b.floorplans[selectedFloor])
+      ||(b.floorplans&&b.floorplans['EG'])
+      ||b.floorplan;
 
     function applyRotation(){
       if(!_fpImg)return;
@@ -1202,7 +1266,7 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
       const fpRef=div({style:{marginBottom:'14px',borderRadius:'12px',overflow:'hidden',border:'1px solid '+CLR.bd2}});
       // Header
       const fpHdr=div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:CLR.bg4}});
-      fpHdr.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p}},'📐 '+(selectedFloor||'Grundriss')+' · '+room.name));
+      fpHdr.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p}},'📐 '+(roomFloor||'Grundriss')+' · '+room.name));
       const rotBtn=document.createElement('button');
       rotBtn.style.cssText='background:'+CLR.bg3+';border:1px solid '+CLR.bd2+';color:'+CLR.t1+';border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit';
       rotBtn.textContent='↻ Drehen';
