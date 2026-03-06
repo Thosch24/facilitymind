@@ -1121,35 +1121,67 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
     const mbody=div({cls:'modal-body'});
     box.appendChild(mbody);ov.appendChild(box);document.body.appendChild(ov);
 
-    // Floorplan reference with rotation
-    let _fpRot=0; // 0, 90, 180, 270
+    // ── FLOORPLAN: fixed section, never destroyed by renderTourBody ──
+    let _fpRot=0;
     const fpSrc=(b.floorplans&&b.floorplans['EG'])||b.floorplan;
+    let _fpImg=null; // keep reference for rotation
     if(fpSrc){
       const fpRef=div({style:{marginBottom:'14px',borderRadius:'12px',overflow:'hidden',border:'1px solid '+CLR.bd2}});
-      // header
+      // Header row
       const fpHdr=div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:CLR.bg4}});
-      fpHdr.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p}},'📐 Grundriss · Aktuell: '+room.name));
+      const fpLabel=div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p}});
+      fpLabel.textContent='📐 Grundriss · Aktuell: '+room.name;
+      fpHdr.appendChild(fpLabel);
+      // Rotate button
       const rotBtn=document.createElement('button');
-      rotBtn.style.cssText='background:'+CLR.bg3+';border:1px solid '+CLR.bd2+';color:'+CLR.t1+';border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit';
-      rotBtn.textContent='↻ Drehen';
-      rotBtn.onclick=()=>{_fpRot=(_fpRot+90)%360;fpImg.style.transform='rotate('+_fpRot+'deg)';fpImg.style.maxHeight=(_fpRot%180===90)?'280px':'200px';};
-      fpHdr.appendChild(rotBtn);fpRef.appendChild(fpHdr);
-      // image wrapper
-      const fpWrap=div({style:{background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',overflow:'hidden',cursor:'pointer',padding:'8px'}});
-      const fpImg=img({src:fpSrc,style:{width:'100%',maxHeight:'200px',objectFit:'contain',transition:'transform .3s ease',borderRadius:'4px'}});
-      fpImg.onclick=()=>showLightbox([fpSrc],0);
-      fpWrap.appendChild(fpImg);fpRef.appendChild(fpWrap);
-      // hint
-      const fpHint=div({style:{padding:'5px 10px',background:CLR.bg4,fontSize:'9px',color:CLR.t3,textAlign:'center'}});
-      fpHint.textContent='Tippen für Vollbild · ↻ zum Drehen';fpRef.appendChild(fpHint);
+      rotBtn.style.cssText='background:'+CLR.bg3+';border:1px solid '+CLR.bd2+';color:'+CLR.t1+';border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px';
+      rotBtn.innerHTML='↻ Drehen';
+      rotBtn.addEventListener('click',function(){
+        _fpRot=(_fpRot+90)%360;
+        if(_fpImg){
+          _fpImg.style.transform='rotate('+_fpRot+'deg)';
+          // adjust wrapper height for landscape vs portrait
+          fpWrap.style.minHeight=(_fpRot%180===90)?'260px':'200px';
+        }
+      });
+      fpHdr.appendChild(rotBtn);
+      fpRef.appendChild(fpHdr);
+
+      // Image wrapper with position pin overlay
+      const fpWrap=div({style:{position:'relative',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',overflow:'hidden',padding:'8px',cursor:'pointer'}});
+      _fpImg=document.createElement('img');
+      _fpImg.src=fpSrc;
+      _fpImg.style.cssText='width:100%;max-height:200px;object-fit:contain;transition:transform .3s ease;border-radius:4px;display:block';
+      // Fullscreen on tap
+      _fpImg.addEventListener('click',function(){showLightbox([fpSrc],0);});
+      fpWrap.appendChild(_fpImg);
+
+      // Room indicator pin (shows current room as pulsing dot)
+      const pin=div({style:{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',pointerEvents:'none'}});
+      pin.innerHTML='<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center">'+
+        '<div style="position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(0,212,255,.25);animation:pulse 1.5s ease-in-out infinite"></div>'+
+        '<div style="width:14px;height:14px;border-radius:50%;background:#00D4FF;border:2px solid #fff;box-shadow:0 0 8px rgba(0,212,255,.8);z-index:1"></div>'+
+        '<div style="position:absolute;bottom:-18px;white-space:nowrap;font-size:9px;font-weight:800;color:#00D4FF;text-shadow:0 1px 3px rgba(0,0,0,.8);background:rgba(0,0,0,.6);padding:1px 5px;border-radius:4px">'+room.name+'</div>'+
+        '</div>';
+      fpWrap.appendChild(pin);
+      fpRef.appendChild(fpWrap);
+
+      // Hint bar
+      const fpHint=div({style:{padding:'4px 10px',background:CLR.bg4,fontSize:'9px',color:CLR.t3,textAlign:'center',borderTop:'1px solid '+CLR.bd}});
+      fpHint.textContent='Tippen = Vollbild  ·  ↻ = Drehen';
+      fpRef.appendChild(fpHint);
       mbody.appendChild(fpRef);
     }
+
+    // ── Dynamic content section (gets cleared on each step) ──
+    const mContent=div({});
+    mbody.appendChild(mContent);
 
     let photos=[];
     let step='capture'; // capture | scanning | equipment | done
     let scanResult=null;
 
-    // Equipment data (populated after scan or manually)
+    // Equipment data
     let eq={
       floor_type:'',floor_condition:'gut',
       ceiling_type:'',ceiling_condition:'gut',
@@ -1164,23 +1196,7 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
     };
 
     function renderTourBody(){
-      mbody.innerHTML='';
-      const fpSrcR=(b.floorplans&&b.floorplans['EG'])||b.floorplan;
-      if(fpSrcR){
-        const fpRef=div({style:{marginBottom:'14px',borderRadius:'12px',overflow:'hidden',border:'1px solid '+CLR.bd2}});
-        const fpHdr=div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:CLR.bg4}});
-        fpHdr.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p}},'📐 Aktuell: '+room.name));
-        const rotBtn2=document.createElement('button');
-        rotBtn2.style.cssText='background:'+CLR.bg3+';border:1px solid '+CLR.bd2+';color:'+CLR.t1+';border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit';
-        rotBtn2.textContent='↻ Drehen';
-        rotBtn2.onclick=()=>{_fpRot=(_fpRot+90)%360;fpImg2.style.transform='rotate('+_fpRot+'deg)';fpImg2.style.maxHeight=(_fpRot%180===90)?'280px':'200px';};
-        fpHdr.appendChild(rotBtn2);fpRef.appendChild(fpHdr);
-        const fpWrap2=div({style:{background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',overflow:'hidden',cursor:'pointer',padding:'8px'}});
-        const fpImg2=img({src:fpSrcR,style:{width:'100%',maxHeight:'200px',objectFit:'contain',transition:'transform .3s ease',transform:'rotate('+_fpRot+'deg)',borderRadius:'4px'}});
-        fpImg2.onclick=()=>showLightbox([fpSrcR],0);
-        fpWrap2.appendChild(fpImg2);fpRef.appendChild(fpWrap2);
-        mbody.appendChild(fpRef);
-      }
+      mContent.innerHTML='';  // only clear dynamic section, NOT the floorplan!
 
       if(step==='capture'){
         renderCapture();
@@ -1190,14 +1206,14 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
         s.appendChild(sp);
         s.appendChild(div({style:{fontSize:'14px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'KI analysiert Raum…'));
         s.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'Ausstattung · Sicherheit · Anlagen'));
-        mbody.appendChild(s);
+        mContent.appendChild(s);
       }else if(step==='equipment'){
         renderEquipmentForm();
       }
     }
 
     function renderCapture(){
-      mbody.appendChild(div({style:{fontSize:'12px',color:CLR.t2,marginBottom:'12px'}},'Fotografiere "'+room.name+'" aus verschiedenen Winkeln. KI erfasst dann alles automatisch.'));
+      mContent.appendChild(div({style:{fontSize:'12px',color:CLR.t2,marginBottom:'12px'}},'Fotografiere "'+room.name+'" aus verschiedenen Winkeln. KI erfasst dann alles automatisch.'));
       const grid=div({style:{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}});
       photos.forEach((p,i)=>{
         const tw=div({style:{position:'relative',width:'76px',height:'76px'}});
@@ -1211,7 +1227,7 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
         addPh.appendChild(span({style:{fontSize:'9px',color:CLR.t2,fontWeight:'700'}},'Foto'));
         grid.appendChild(addPh);
       }
-      mbody.appendChild(grid);
+      mContent.appendChild(grid);
       if(photos.length===0){
         const g=div({style:{background:CLR.bg4,borderRadius:'10px',padding:'10px 12px',marginBottom:'12px'}});
         g.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.t1,marginBottom:'6px'}},'📷 Tipps für '+room.name+':'));
@@ -1219,7 +1235,7 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
           const row=div({style:{display:'flex',gap:'6px',fontSize:'10px',color:CLR.t2,marginBottom:'3px'}});
           row.appendChild(span({style:{fontWeight:'800',color:CLR.p,width:'14px'}},n));row.appendChild(span({},t));g.appendChild(row);
         });
-        mbody.appendChild(g);
+        mContent.appendChild(g);
       }
       const btns=div({style:{display:'flex',gap:'8px',flexWrap:'wrap'}});
       btns.appendChild(btn('Überspringen','btn-ghost btn-sm',()=>skipRoom()));
@@ -1230,7 +1246,7 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
         btns.appendChild(btn('📷 Foto aufnehmen','btn-pri',()=>tourFileInp.click()));
         btns.appendChild(btn('✏️ Manuell','btn-ghost btn-sm',()=>{step='equipment';renderTourBody();}));
       }
-      mbody.appendChild(btns);
+      mContent.appendChild(btns);
     }
 
     function renderEquipmentForm(){
@@ -1259,17 +1275,17 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
       if(scanResult){
         const sr=div({style:{padding:'10px 12px',background:CLR.acc+'15',borderRadius:'10px',marginBottom:'12px',fontSize:'11px',color:CLR.t1,fontWeight:'700'}});
         sr.textContent='✅ KI hat '+photos.length+' Fotos analysiert – bitte prüfen und ergänzen:';
-        mbody.appendChild(sr);
+        mContent.appendChild(sr);
       }
 
       // Maße
       const massG=div({cls:'g2',style:{marginBottom:'10px'}});
       const {wrap:aW}=field('Fläche m²',eq.area,v=>eq.area=+v,{type:'number',mb:false});
       const {wrap:hW}=field('Höhe m',eq.height_m,v=>eq.height_m=+v,{type:'number',mb:false});
-      massG.appendChild(aW);massG.appendChild(hW);mbody.appendChild(massG);
+      massG.appendChild(aW);massG.appendChild(hW);mContent.appendChild(massG);
 
       // Boden
-      mbody.appendChild(sec('🪵 Boden & Wände',[
+      mContent.appendChild(sec('🪵 Boden & Wände',[
         field('Bodenbelag',eq.floor_type,v=>eq.floor_type=v,{options:[['','Wählen...'],['Parkett','Parkett'],['Laminat','Laminat'],['Teppich','Teppich'],['Fliesen','Fliesen'],['Beton','Beton'],['Linoleum','Linoleum'],['PVC','PVC'],['Andere','Andere']],mb:false}).wrap,
         field('Zustand Boden',eq.floor_condition,v=>eq.floor_condition=v,{options:[['gut','✅ Gut'],['mittel','⚠️ Mittel'],['schlecht','❌ Schlecht']],mb:false}).wrap,
         field('Deckentyp',eq.ceiling_type,v=>eq.ceiling_type=v,{options:[['','Wählen...'],['Putz','Putz'],['Akustikdecke','Akustikdecke'],['Abgehängt','Abgehängt'],['Betondecke','Betondecke'],['Andere','Andere']],mb:false}).wrap,
@@ -1277,7 +1293,7 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
       ]));
 
       // Fenster & Türen
-      mbody.appendChild(sec('🪟 Fenster & Türen',[
+      mContent.appendChild(sec('🪟 Fenster & Türen',[
         numRow('Anzahl Fenster','windows'),
         numRow('Anzahl Türen','doors'),
         field('Fenstertyp',eq.window_type,v=>eq.window_type=v,{options:[['','Wählen...'],['Einfach','Einfachverglasung'],['Doppel','Doppelverglasung'],['Dreifach','Dreifachverglasung']],mb:false}).wrap,
@@ -1285,14 +1301,14 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
       ]));
 
       // Beleuchtung
-      mbody.appendChild(sec('💡 Beleuchtung',[
+      mContent.appendChild(sec('💡 Beleuchtung',[
         field('Leuchtmitteltyp',eq.lighting_type,v=>eq.lighting_type=v,{options:[['','Wählen...'],['LED','LED'],['Leuchtstoffröhre','Leuchtstoffröhre'],['Halogen','Halogen'],['Glühbirne','Glühbirne'],['Gemischt','Gemischt']],mb:false}).wrap,
         numRow('Anzahl Leuchten','lighting_count'),
         field('Zustand Beleuchtung',eq.lighting_condition,v=>eq.lighting_condition=v,{options:[['gut','✅ Gut'],['mittel','⚠️ Mittel'],['schlecht','❌ Schlecht']],mb:false}).wrap,
       ]));
 
       // Sicherheit
-      mbody.appendChild(sec('🚨 Sicherheit & Notfall',[
+      mContent.appendChild(sec('🚨 Sicherheit & Notfall',[
         chk('🏃 Fluchtweg vorhanden','escape_route'),
         chk('🪧 Fluchtweg-Beschilderung','escape_route_sign'),
         chk('💙 Defibrillator (AED)','defi'),
@@ -1304,7 +1320,7 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
       const btns=div({style:{display:'flex',gap:'8px',flexWrap:'wrap',paddingBottom:'8px'}});
       btns.appendChild(btn('← Zurück','btn-ghost btn-sm',()=>{step='capture';renderTourBody();}));
       btns.appendChild(btn('✓ Raum speichern & weiter','btn-pri',()=>saveRoomAndNext()));
-      mbody.appendChild(btns);
+      mContent.appendChild(btns);
     }
 
     async function runRoomScan(){
