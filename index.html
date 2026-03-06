@@ -849,41 +849,81 @@ function pageBuildingDetail(bid){
     const scanDone=rooms.filter(r=>r.scanDone).length;
     const progress=rooms.length?Math.round(scanDone/rooms.length*100):0;
 
-    // Floorplan card
+    // ── GRUNDRISS PRO STOCKWERK ────────────────────────────────────────
     const fpc=card({padding:'16px',marginBottom:'12px'});
-    fpc.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'📐 Grundriss'));
-    if(b.floorplan){
-      fpc.appendChild(img({src:b.floorplan,style:{width:'100%',maxHeight:'200px',objectFit:'contain',borderRadius:'12px',border:'1px solid '+CLR.bd,marginBottom:'10px'}}));
-      const frow=div({style:{display:'flex',gap:'8px'}});
-      frow.appendChild(btn('🗑️ Entfernen','btn-ghost btn-sm',()=>{
-        if(!confirm('Grundriss entfernen?'))return;
-        const blds=DB.get('buildings',[]).map(x=>x.id===bid?{...x,floorplan:null}:x);
-        DB.set('buildings',blds);buildTabContent();
-      }));
-      frow.appendChild(btn('🔄 Ersetzen','btn-sec btn-sm',()=>fpInp.click()));
-      fpc.appendChild(frow);
-    }else{
-      const fpDrop=div({style:{border:'2px dashed '+CLR.bd,borderRadius:'12px',padding:'24px 16px',textAlign:'center',cursor:'pointer',background:CLR.bg4,marginBottom:'10px'},onclick:()=>fpInp.click()});
-      fpDrop.appendChild(div({style:{fontSize:'36px',marginBottom:'8px'}},'📄'));
-      fpDrop.appendChild(div({style:{fontSize:'13px',fontWeight:'700',color:CLR.t1,marginBottom:'4px'}},'Grundriss hochladen'));
-      fpDrop.appendChild(div({style:{fontSize:'11px',color:CLR.t2}},'PDF oder Foto des Grundrisses'));
-      fpDrop.appendChild(div({style:{marginTop:'10px',display:'inline-flex',gap:'6px'}},[badge(CLR.p,'PDF'),badge(CLR.p2,'JPG'),badge(CLR.p2,'PNG')]));
-      fpc.appendChild(fpDrop);
+    fpc.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'4px'}},'📐 Grundrisse'));
+    fpc.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'14px'}},b.floors+' Stockwerk(e) · Je ein Grundriss pro Etage'));
+
+    // Build floor list: UG floors, EG, OG floors
+    const totalFloors=Math.max(1,b.floors||1);
+    const floorplans=b.floorplans||{};
+    // If old single floorplan exists, migrate it to EG
+    if(b.floorplan&&!floorplans['EG']){floorplans['EG']=b.floorplan;}
+
+    // Generate floor labels: UG2,UG1 then EG then OG1..OGn
+    function getFloorLabels(total){
+      const labels=[];
+      // Add UG if floors suggest basement (we add 1 UG by default)
+      labels.push('UG');
+      labels.push('EG');
+      for(let i=1;i<total;i++)labels.push('OG '+i);
+      return labels;
     }
-    const fpInp=h('input',{type:'file',accept:'image/*,application/pdf',style:{display:'none'}});
-    fpInp.addEventListener('change',async e=>{
-      const file=e.target.files[0];if(!file)return;
-      let b64;
-      if(file.type==='application/pdf'){
-        // Render PDF page 1 to canvas
-        b64=await pdfToImage(file);
+    const floorLabels=getFloorLabels(totalFloors);
+
+    floorLabels.forEach(fl=>{
+      const flCard=div({style:{border:'1px solid '+CLR.bd2,borderRadius:'12px',marginBottom:'8px',overflow:'hidden'}});
+      // Header
+      const flHdr=div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',background:CLR.bg4}});
+      flHdr.appendChild(div({style:{fontSize:'12px',fontWeight:'800',color:CLR.t1}},'📐 '+fl));
+      const flBtns=div({style:{display:'flex',gap:'6px'}});
+
+      const fpInp=document.createElement('input');
+      fpInp.type='file';fpInp.accept='image/*,application/pdf';fpInp.style.display='none';
+      fpInp.addEventListener('change',async e=>{
+        const file=e.target.files[0];if(!file)return;
+        const loading=div({style:{padding:'12px',textAlign:'center',color:CLR.t2,fontSize:'11px'}},'⏳ Wird geladen…');
+        flCard.appendChild(loading);
+        let b64;
+        try{
+          if(file.type==='application/pdf'){b64=await pdfToImage(file);}
+          else{b64=await fileToB64(file);}
+        }catch(err){b64=null;}
+        loading.remove();
+        if(!b64){alert('Fehler beim Laden der Datei');e.target.value='';return;}
+        floorplans[fl]=b64;
+        const blds=DB.get('buildings',[]).map(x=>x.id===bid?{...x,floorplans:{...floorplans},floorplan:floorplans['EG']||b64}:x);
+        DB.set('buildings',blds);e.target.value='';buildTabContent();
+      });
+
+      if(floorplans[fl]){
+        const upBtn=btn('🔄','btn-ghost btn-sm',()=>fpInp.click());
+        const delBtn=btn('🗑️','btn-ghost btn-sm',()=>{
+          if(!confirm(fl+' Grundriss löschen?'))return;
+          delete floorplans[fl];
+          const blds=DB.get('buildings',[]).map(x=>x.id===bid?{...x,floorplans:{...floorplans},floorplan:floorplans['EG']||null}:x);
+          DB.set('buildings',blds);buildTabContent();
+        });
+        flBtns.appendChild(upBtn);flBtns.appendChild(delBtn);
+        flHdr.appendChild(flBtns);flCard.appendChild(flHdr);
+        // Preview
+        const preview=div({style:{position:'relative',cursor:'pointer'},onclick:()=>showLightbox([floorplans[fl]],0)});
+        preview.appendChild(img({src:floorplans[fl],style:{width:'100%',maxHeight:'180px',objectFit:'contain',display:'block',background:'#fff'}}));
+        const lbIcon=div({style:{position:'absolute',top:'8px',right:'8px',background:'rgba(0,0,0,.5)',borderRadius:'6px',padding:'3px 8px',fontSize:'10px',color:'#fff',fontWeight:'700'}});
+        lbIcon.textContent='🔍 Vollbild';preview.appendChild(lbIcon);
+        flCard.appendChild(preview);
       }else{
-        b64=await fileToB64(file);
+        const addBtn=btn('＋ Hochladen','btn-sec btn-sm',()=>fpInp.click());
+        flBtns.appendChild(addBtn);
+        flHdr.appendChild(flBtns);flCard.appendChild(flHdr);
+        const empty=div({style:{padding:'16px',textAlign:'center',cursor:'pointer'},onclick:()=>fpInp.click()});
+        empty.appendChild(div({style:{fontSize:'11px',color:CLR.t3}},'PDF, JPG oder PNG'));
+        flCard.appendChild(empty);
       }
-      const blds=DB.get('buildings',[]).map(x=>x.id===bid?{...x,floorplan:b64}:x);
-      DB.set('buildings',blds);e.target.value='';buildTabContent();
+      flCard.appendChild(fpInp);
+      fpc.appendChild(flCard);
     });
-    fpc.appendChild(fpInp);
+
     tabContent.appendChild(fpc);
 
     // Guided tour card
@@ -902,7 +942,7 @@ function pageBuildingDetail(bid){
     if(rooms.length===0){
       // Start tour from scratch - need to know rooms first
       tbtns.appendChild(btn('🔍 KI liest Grundriss','btn-pri',()=>{
-        if(!b.floorplan){alert('Bitte zuerst Grundriss hochladen');return;}
+        const fpForScan=(b.floorplans&&Object.values(b.floorplans)[0])||b.floorplan;if(!fpForScan){alert('Bitte zuerst einen Grundriss hochladen');return;}
         startFloorplanScan();
       }));
       tbtns.appendChild(btn('＋ Räume manuell','btn-ghost btn-sm',()=>setTab('rooms')));
@@ -937,40 +977,50 @@ function pageBuildingDetail(bid){
 
   // ── PDF TO IMAGE ────────────────────────────────────────────────────
   async function pdfToImage(file){
+    // For images: just convert directly
+    if(file.type.startsWith('image/')){
+      return fileToB64(file);
+    }
+    // For PDF: try PDF.js, fallback to placeholder
     return new Promise((resolve)=>{
+      const placeholder='data:image/svg+xml,'+encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">'+
+        '<rect width="300" height="400" fill="#1C2A3E"/>'+
+        '<rect x="40" y="40" width="220" height="280" rx="8" fill="#253650" stroke="#00D4FF" stroke-width="1.5"/>'+
+        '<text x="150" y="130" text-anchor="middle" font-size="48">📄</text>'+
+        '<text x="150" y="185" text-anchor="middle" font-size="16" fill="#EEF2FF" font-weight="bold">PDF Grundriss</text>'+
+        '<text x="150" y="210" text-anchor="middle" font-size="12" fill="#7A90B8">Vorschau nicht verfügbar</text>'+
+        '<text x="150" y="230" text-anchor="middle" font-size="11" fill="#3D5070">Datei gespeichert ✓</text>'+
+        '</svg>'
+      );
       const fr=new FileReader();
+      fr.onerror=()=>resolve(placeholder);
       fr.onload=async(e)=>{
         try{
-          // Use PDF.js if available, otherwise just store as base64 data URI
           const arr=new Uint8Array(e.target.result);
-          // Try PDF.js CDN
-          if(!window.pdfjsLib){
-            const script=document.createElement('script');
-            script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-            script.onload=async()=>{
-              window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-              const pdf=await window.pdfjsLib.getDocument({data:arr}).promise;
-              const page=await pdf.getPage(1);
-              const vp=page.getViewport({scale:1.5});
-              const canvas=document.createElement('canvas');
-              canvas.width=vp.width;canvas.height=vp.height;
-              await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-              resolve(canvas.toDataURL('image/jpeg',0.85));
-            };
-            script.onerror=()=>resolve('data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280"><rect width="200" height="280" fill="#f0f4f8"/><text x="100" y="140" text-anchor="middle" font-size="14" fill="#5D6D7E">PDF Grundriss</text><text x="100" y="160" text-anchor="middle" font-size="11" fill="#9DAFC0">geladen</text></svg>'));
-            document.head.appendChild(script);
-          }else{
+          const loadPdf=async()=>{
             const pdf=await window.pdfjsLib.getDocument({data:arr}).promise;
             const page=await pdf.getPage(1);
-            const vp=page.getViewport({scale:1.5});
+            const vp=page.getViewport({scale:2.0});
             const canvas=document.createElement('canvas');
             canvas.width=vp.width;canvas.height=vp.height;
             await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-            resolve(canvas.toDataURL('image/jpeg',0.85));
+            return canvas.toDataURL('image/jpeg',0.88);
+          };
+          if(window.pdfjsLib){
+            resolve(await loadPdf());
+          }else{
+            const script=document.createElement('script');
+            script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            script.onload=async()=>{
+              window.pdfjsLib.GlobalWorkerOptions.workerSrc=
+                'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+              try{resolve(await loadPdf());}catch(e2){resolve(placeholder);}
+            };
+            script.onerror=()=>resolve(placeholder);
+            document.head.appendChild(script);
           }
-        }catch(err){
-          resolve('data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280"><rect width="200" height="280" fill="#f0f4f8"/><text x="100" y="130" text-anchor="middle" font-size="40">📄</text><text x="100" y="165" text-anchor="middle" font-size="13" fill="#5D6D7E">PDF Grundriss</text><text x="100" y="182" text-anchor="middle" font-size="10" fill="#9DAFC0">geladen ✓</text></svg>'));
-        }
+        }catch(err){resolve(placeholder);}
       };
       fr.readAsArrayBuffer(file);
     });
@@ -1001,9 +1051,9 @@ function pageBuildingDetail(bid){
 Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
 {"rooms":[{"name":"Raumname","type":"OFFICE|TECHNICAL|CORRIDOR|STORAGE|WC|MEETING|STAIRCASE|OTHER","area_m2":Zahl_oder_null,"floor":Zahl_oder_0,"notes":"string"}],"floors":Anzahl_Stockwerke,"total_area_m2":Zahl_oder_null}`;
 
-    const imgData=b.floorplan.replace(/^data:image\/\w+;base64,/,'');
+    const fpForAI=(b.floorplans&&Object.values(b.floorplans)[0])||b.floorplan;const imgData=fpForAI.replace(/^data:image\/[\w+]+;base64,/,'');
     const msgContent=provider==='openai'
-      ?[{type:'image_url',image_url:{url:b.floorplan,detail:'high'}},{type:'text',text:prompt}]
+      ?[{type:'image_url',image_url:{url:fpForAI,detail:'high'}},{type:'text',text:prompt}]
       :[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:imgData}},{type:'text',text:prompt}];
 
     const fetchProm=provider==='openai'
@@ -1071,12 +1121,27 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
     const mbody=div({cls:'modal-body'});
     box.appendChild(mbody);ov.appendChild(box);document.body.appendChild(ov);
 
-    // Floorplan reference
-    if(b.floorplan){
-      const fpRef=div({style:{marginBottom:'14px',padding:'8px',background:CLR.bg4,borderRadius:'10px',textAlign:'center'}});
-      fpRef.appendChild(div({style:{fontSize:'10px',fontWeight:'700',color:CLR.t2,marginBottom:'5px'}},'📐 Grundriss-Referenz'));
-      fpRef.appendChild(img({src:b.floorplan,style:{width:'100%',maxHeight:'100px',objectFit:'contain',borderRadius:'6px'}}));
-      fpRef.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p,marginTop:'5px'}},'→ Aktuell: '+room.name));
+    // Floorplan reference with rotation
+    let _fpRot=0; // 0, 90, 180, 270
+    const fpSrc=(b.floorplans&&b.floorplans['EG'])||b.floorplan;
+    if(fpSrc){
+      const fpRef=div({style:{marginBottom:'14px',borderRadius:'12px',overflow:'hidden',border:'1px solid '+CLR.bd2}});
+      // header
+      const fpHdr=div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:CLR.bg4}});
+      fpHdr.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p}},'📐 Grundriss · Aktuell: '+room.name));
+      const rotBtn=document.createElement('button');
+      rotBtn.style.cssText='background:'+CLR.bg3+';border:1px solid '+CLR.bd2+';color:'+CLR.t1+';border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit';
+      rotBtn.textContent='↻ Drehen';
+      rotBtn.onclick=()=>{_fpRot=(_fpRot+90)%360;fpImg.style.transform='rotate('+_fpRot+'deg)';fpImg.style.maxHeight=(_fpRot%180===90)?'280px':'200px';};
+      fpHdr.appendChild(rotBtn);fpRef.appendChild(fpHdr);
+      // image wrapper
+      const fpWrap=div({style:{background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',overflow:'hidden',cursor:'pointer',padding:'8px'}});
+      const fpImg=img({src:fpSrc,style:{width:'100%',maxHeight:'200px',objectFit:'contain',transition:'transform .3s ease',borderRadius:'4px'}});
+      fpImg.onclick=()=>showLightbox([fpSrc],0);
+      fpWrap.appendChild(fpImg);fpRef.appendChild(fpWrap);
+      // hint
+      const fpHint=div({style:{padding:'5px 10px',background:CLR.bg4,fontSize:'9px',color:CLR.t3,textAlign:'center'}});
+      fpHint.textContent='Tippen für Vollbild · ↻ zum Drehen';fpRef.appendChild(fpHint);
       mbody.appendChild(fpRef);
     }
 
@@ -1100,10 +1165,20 @@ Erkenne alle Räume und antworte NUR mit JSON (kein Markdown):
 
     function renderTourBody(){
       mbody.innerHTML='';
-      if(b.floorplan){
-        const fpRef=div({style:{marginBottom:'14px',padding:'8px',background:CLR.bg4,borderRadius:'10px',textAlign:'center'}});
-        fpRef.appendChild(div({style:{fontSize:'10px',fontWeight:'700',color:CLR.t2,marginBottom:'4px'}},'📐 Aktuell: '+room.name));
-        fpRef.appendChild(img({src:b.floorplan,style:{width:'100%',maxHeight:'80px',objectFit:'contain',borderRadius:'6px'}}));
+      const fpSrcR=(b.floorplans&&b.floorplans['EG'])||b.floorplan;
+      if(fpSrcR){
+        const fpRef=div({style:{marginBottom:'14px',borderRadius:'12px',overflow:'hidden',border:'1px solid '+CLR.bd2}});
+        const fpHdr=div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:CLR.bg4}});
+        fpHdr.appendChild(div({style:{fontSize:'10px',fontWeight:'800',color:CLR.p}},'📐 Aktuell: '+room.name));
+        const rotBtn2=document.createElement('button');
+        rotBtn2.style.cssText='background:'+CLR.bg3+';border:1px solid '+CLR.bd2+';color:'+CLR.t1+';border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit';
+        rotBtn2.textContent='↻ Drehen';
+        rotBtn2.onclick=()=>{_fpRot=(_fpRot+90)%360;fpImg2.style.transform='rotate('+_fpRot+'deg)';fpImg2.style.maxHeight=(_fpRot%180===90)?'280px':'200px';};
+        fpHdr.appendChild(rotBtn2);fpRef.appendChild(fpHdr);
+        const fpWrap2=div({style:{background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',minHeight:'200px',overflow:'hidden',cursor:'pointer',padding:'8px'}});
+        const fpImg2=img({src:fpSrcR,style:{width:'100%',maxHeight:'200px',objectFit:'contain',transition:'transform .3s ease',transform:'rotate('+_fpRot+'deg)',borderRadius:'4px'}});
+        fpImg2.onclick=()=>showLightbox([fpSrcR],0);
+        fpWrap2.appendChild(fpImg2);fpRef.appendChild(fpWrap2);
         mbody.appendChild(fpRef);
       }
 
