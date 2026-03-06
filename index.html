@@ -272,6 +272,122 @@ function makeGallery(container, photos, onChange, maxPhotos, emptyLabel){
 }
 
 
+// ── AUTO BACKUP SYSTEM ────────────────────────────────────────────────
+const BACKUP_INTERVAL_DAYS = 1; // täglich
+const BACKUP_KEY = 'fm2_last_backup';
+
+function getBackupData(){
+  return JSON.stringify({
+    version: APP_VERSION,
+    exported: new Date().toISOString(),
+    device: navigator.userAgent.includes('iPhone')?'iPhone':'Other',
+    buildings: DB.get('buildings',[]),
+    rooms: DB.get('rooms',[]),
+    assets: DB.get('assets',[]),
+    plans: DB.get('plans',[]),
+    records: DB.get('records',[])
+  }, null, 2);
+}
+
+function daysSinceBackup(){
+  const last = localStorage.getItem(BACKUP_KEY);
+  if(!last) return 999;
+  return (Date.now() - new Date(last).getTime()) / 864e5;
+}
+
+function markBackupDone(){
+  localStorage.setItem(BACKUP_KEY, new Date().toISOString());
+}
+
+async function saveBackupToFiles(silent){
+  const json = getBackupData();
+  const date = new Date().toISOString().slice(0,10);
+  const filename = 'FacilityMind_Backup_' + date + '.json';
+  const blob = new Blob([json], {type:'application/json'});
+  const file = new File([blob], filename, {type:'application/json'});
+
+  // Try Web Share API (iOS Safari supports this → saves to iCloud Drive)
+  if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({
+        title: 'FacilityMind Backup',
+        text: 'Backup ' + date,
+        files: [file]
+      });
+      markBackupDone();
+      return true;
+    }catch(e){
+      if(e.name !== 'AbortError') console.warn('Share error:', e);
+      return false;
+    }
+  } else {
+    // Fallback: download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    markBackupDone();
+    return true;
+  }
+}
+
+function showBackupReminder(){
+  // Don't show if no data yet
+  const blds = DB.get('buildings',[]);
+  if(!blds.length) return;
+
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;bottom:calc(70px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:calc(100% - 28px);max-width:402px;background:linear-gradient(135deg,#0A1828,#0F2040);border:1px solid #253650;border-radius:16px;padding:14px 16px;z-index:9998;box-shadow:0 8px 32px rgba(0,0,0,.6);font-family:-apple-system,sans-serif;display:flex;align-items:center;gap:12px';
+
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:28px;flex-shrink:0';
+  icon.textContent = '☁️';
+
+  const text = document.createElement('div');
+  text.style.flex = '1';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:13px;font-weight:800;color:#EEF2FF;margin-bottom:2px';
+  title.textContent = 'Tägliches Backup';
+  const sub = document.createElement('div');
+  sub.style.cssText = 'font-size:11px;color:#7A90B8';
+  sub.textContent = 'Daten in iCloud Drive sichern?';
+  text.appendChild(title); text.appendChild(sub);
+
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex-shrink:0';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.style.cssText = 'background:linear-gradient(135deg,#0099CC,#00D4FF);color:#000;border:none;border-radius:9px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap';
+  saveBtn.textContent = '☁️ Sichern';
+  saveBtn.onclick = async () => {
+    banner.remove();
+    await saveBackupToFiles(false);
+  };
+
+  const laterBtn = document.createElement('button');
+  laterBtn.style.cssText = 'background:rgba(255,255,255,.06);color:#7A90B8;border:1px solid #253650;border-radius:9px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit';
+  laterBtn.textContent = 'Später';
+  laterBtn.onclick = () => {
+    banner.remove();
+    // Remind again in 1 day
+    localStorage.setItem(BACKUP_KEY, new Date(Date.now() - 23*3600*1000).toISOString());
+  };
+
+  btns.appendChild(saveBtn); btns.appendChild(laterBtn);
+  banner.appendChild(icon); banner.appendChild(text); banner.appendChild(btns);
+  document.body.appendChild(banner);
+
+  // Auto-hide after 15 seconds
+  setTimeout(() => { if(banner.parentNode) banner.remove(); }, 15000);
+}
+
+function checkAutoBackup(){
+  if(daysSinceBackup() >= BACKUP_INTERVAL_DAYS){
+    setTimeout(showBackupReminder, 5000); // show 5s after app opens
+  }
+}
+
+
 // ── PERSISTENT DB ─────────────────────────────────────────────────────
 // Dual-write: localStorage + sessionStorage as backup (iOS PWA fix)
 const DB={
@@ -2005,16 +2121,16 @@ function pageSettings(){
   dmCard.appendChild(div({style:{fontSize:'13px',fontWeight:'800',color:CLR.t1,marginBottom:'12px'}},'💾 Datenverwaltung'));
 
   // Backup Export
-  const expBtn=btn('📤 Backup exportieren','btn-sec',()=>{
-    const data={version:'0.9',exported:new Date().toISOString(),buildings:DB.get('buildings',[]),rooms:DB.get('rooms',[]),assets:DB.get('assets',[]),plans:DB.get('plans',[]),records:DB.get('records',[])};
-    const json=JSON.stringify(data,null,2);
-    const blob=new Blob([json],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a2=document.createElement('a');
-    a2.href=url;a2.download='FacilityMind_Backup_'+new Date().toISOString().slice(0,10)+'.json';
-    a2.click();URL.revokeObjectURL(url);
+  // Last backup info
+  const lastBk = localStorage.getItem(BACKUP_KEY);
+  const lastBkText = lastBk ? 'Zuletzt: '+new Date(lastBk).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Noch kein Backup';
+  dmCard.appendChild(div({style:{fontSize:'11px',color:CLR.t2,marginBottom:'10px'}},lastBkText));
+  const expBtn=btn('☁️ Jetzt in iCloud sichern','btn-pri btn-sm',async()=>{
+    expBtn.textContent='⏳ Speichern...';expBtn.disabled=true;
+    const ok=await saveBackupToFiles(false);
+    expBtn.disabled=false;expBtn.textContent='☁️ Jetzt in iCloud sichern';
   });
-  expBtn.style.cssText+='width:100%;justify-content:center;padding:12px;border-radius:12px;margin-bottom:8px;';
+  expBtn.style.cssText+='width:100%;justify-content:center;padding:12px;border-radius:12px;margin-bottom:8px;font-size:13px;';
   dmCard.appendChild(expBtn);
 
   // Backup Import
@@ -2309,8 +2425,10 @@ if(!DB.test()){
 seed();
 registerSW();
 render();
-// Check for updates 3 seconds after load (non-blocking)
+// Check for updates 3s after load
 setTimeout(showUpdateBannerIfNeeded, 3000);
+// Check if daily backup is due
+checkAutoBackup();
 </script>
 </body>
 </html>
